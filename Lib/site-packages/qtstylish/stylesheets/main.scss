@@ -1,0 +1,680 @@
+@import "icons";
+
+// ========================================================================== //
+// Generic
+
+QWidget {
+    background-color: $BACKGROUND_1;
+    color: $FOREGROUND_1;
+
+    // For alternating row color
+    alternate-background-color: $BACKGROUND_2;
+
+    selection-color: $FOREGROUND_1;
+    
+    &:active {
+        selection-background-color: $SELECTION_2;
+    }
+    &:!active {
+        selection-background-color: $SELECTION_INACTIVE;
+    }
+
+    &:disabled {
+        color: $FOREGROUND_DISABLED;
+    }
+}
+
+QWidget {
+    background-color: $BACKGROUND_3;
+}
+
+// Containers
+QTabWidget .QWidget,
+QTabWidget .QFrame,
+QTabWidget .QSplitter,
+QTabWidget .QStackedWidget,
+QTabBar::tab:selected,
+QTabWidget::pane,
+QDial,
+QGroupBox {
+    background-color: $BACKGROUND_1;
+
+}
+
+// Interactables
+QLabel,
+QAbstractButton {
+    background: transparent;
+    padding: 4px 8px;
+}
+
+
+QPushButton,
+QActionButton,
+QTabBar::tab:!selected,
+QToolBox::tab:!selected,
+QComboBox:!editable,
+QComboBox::drop-down {
+    &:hover {
+        background-color: $BACKGROUND_1;
+    }
+}
+
+QPushButton {
+    &:checked,
+    &:pressed {
+        background-color: $BACKGROUND_4;
+    }
+}
+QTabBar::tab:selected,
+QGroupBox,
+QAbstractScrollArea {
+    border: 1px solid $BORDER_1;
+}
+
+
+QAbstractScrollArea,
+QMenu,
+QMenu::indicator {
+    background-color: $BACKGROUND_3;
+}
+
+QToolButton,
+QLineEdit,
+QTextEdit,
+QPlainTextEdit,
+QDockWidget,
+QTreeView,
+QListView,
+QColumnView,
+QDateEdit, 
+QDateTimeEdit,
+QGroupBox,
+QAbstractSpinBox,
+QDateEdit>QAbstractItemView, 
+QDateTimeEdit>QAbstractItemView,
+QToolBox {
+    background-color: $BACKGROUND_0;
+    border: 1px solid $BORDER_1;
+    
+    &:disabled {
+        color: $FOREGROUND_DISABLED;
+    }
+}
+
+
+QStatusBar,
+QDockWidget::title, {
+    background: $BACKGROUND_4;
+    border: 1px solid $BORDER_1;
+}
+
+
+QPushButton,
+QToolBox::tab {
+    background-color: $BACKGROUND_SURFACE;
+    border: 1px solid $BORDER_1;
+    &:selected{
+        background-color: $BACKGROUND_1;
+    }
+}
+
+QCheckBox, 
+QRadioButton, 
+QComboBox, 
+QAbstractSpinBox {
+    padding: 3px 1px;
+}
+
+QGroupBox {
+    padding-top: 16px;
+    &:title{
+        top: 6px;
+        left: 6px;
+    }
+}
+
+// ========================================================================== //
+// Buttons
+
+
+
+QPushButton, 
+QToolButton {
+    &:checked{
+        background-color: $BACKGROUND_4;
+    }
+}
+
+QComboBox {
+    padding: 4px;
+    background-color: $BACKGROUND_0;
+    border: 1px solid $BORDER_1;
+    &:!editable {
+        background-color: $BACKGROUND_SURFACE;
+    }
+
+    &:disabled {
+        color: $FOREGROUND_DISABLED;
+    }
+
+    &::drop-down {
+        padding: 4px;
+        border: none;
+        &:editable {
+            background-color: $BACKGROUND_SURFACE;
+            border-left: 1px solid $BORDER_1;
+        }
+        subcontrol-origin: padding;
+        subcontrol-position: top right;
+        width: 16px;
+    }
+
+    
+  
+    &::drop-down {
+        padding: 4px;
+        border: none;
+        &:editable {
+            background-color: $BACKGROUND_SURFACE;
+            border-left: 1px solid $BORDER_1;
+        }
+        subcontrol-origin: padding;
+        subcontrol-position: top right;
+        width: 16px;
+    }
+    &::down-arrow {
+        height: 16px;
+        width: 16px;
+    }
+
+}
+
+QAbstractSpinBox {
+    &:up-button {
+        subcontrol-origin: border;
+        subcontrol-position: top right;
+    }
+
+    &:down-button {
+        subcontrol-origin: border;
+        subcontrol-position: bottom right;
+    }
+    &::up-arrow,
+    &::down-arrow {
+        height: 12px;
+        width: 12px;
+    }
+
+    &::up-button,
+    &::down-button {
+        
+        
+        width: 14px;
+        border: 1px solid $BORDER_1;
+        background-color: $BACKGROUND_SURFACE;
+    }
+}
+// ========================================================================== //
+// QTableView
+
+QTableView, QTreeView, QListView {
+    border: 1px solid $BORDER_1;
+    background-color: $BACKGROUND_0;
+}
+
+QAbstractScrollArea::corner {
+    background-color: $BACKGROUND_3;
+}
+
+QHeaderView {
+    border: none;
+}
+
+QHeaderView::section,
+QTableCornerButton::section{
+    border: 0px solid $BORDER_1;
+    padding: 0px 4px;
+
+    &:horizontal {
+        border-width: 0px 0px 1px 1px;
+    }
+    &:vertical {
+        border-width: 1px 1px 0px 0px;
+    }
+
+    background-color: qlineargradient(0, 1, 0, 0, (0 darken($BACKGROUND_1, 5), 1 $BACKGROUND_1));
+    &:selected {
+        &:active {
+            background-color: qlineargradient(0, 1, 0, 0, (0 darken($SELECTION_2, 5), 1 $SELECTION_2));
+        }
+        &:!active {
+            background-color: qlineargradient(0, 1, 0, 0, (0 darken($SELECTION_INACTIVE, 5), 1 $SELECTION_INACTIVE));
+        }
+    }
+}
+
+QTableCornerButton::section {
+    border: none;
+}
+
+// PandasGUI
+
+.HeaderView {
+    border: 0px solid $BORDER_1;
+    &[orientation="horizontal"]{
+        border-width: 1px 0px 0px 0px;
+    }
+    &[orientation="vertical"]{
+        border-width: 0px 0px 0px 1px;
+        
+    }
+}
+.CornerWidget {
+    border: 1px solid  $BORDER_1;
+}
+
+.DataTableView {
+    border: none;
+}
+
+.HeaderNamesView {   
+    border: 0px solid $BORDER_1;
+    &[orientation="horizontal"]{ 
+        border-width: 1px 1px 1px 1px;
+    }
+    &[orientation="vertical"]{
+        border-width: 1px 0px 0px 1px;
+    }
+
+}
+
+.HeaderNamesView::item,
+.HeaderView::item,
+.CornerWidget {
+    background-color: qlineargradient(0, 1, 0, 0, (0 darken($BACKGROUND_1, 5), 1 $BACKGROUND_1));
+    &:selected {
+        &:active {
+            background-color: qlineargradient(0, 1, 0, 0, (0 darken($SELECTION_2, 5), 1 $SELECTION_2));
+        }
+        &:!active {
+            background-color: qlineargradient(0, 1, 0, 0, (0 darken($SELECTION_INACTIVE, 5), 1 $SELECTION_INACTIVE));
+        }
+    }
+}
+
+
+// ========================================================================== //
+// QScrollBar
+
+QScrollBar {
+    // https://stackoverflow.com/a/17935692
+    &::add-page, &::sub-page {
+        background-color: transparent;
+    }
+    
+    background-color: transparent;
+    border: 1px solid $BORDER_1;
+    border-radius: 0px;
+
+    $MAIN_SIZE: 20px;
+    &::handle {
+        background-color: $FOREGROUND_4;
+        &:hover{
+            background-color: $FOREGROUND_3;
+        }
+        
+        &:disabled{background-color: $FOREGROUND_DISABLED;}
+        
+        border-radius: 2px;
+        margin: 2px;
+        &:vertical {
+            min-height: 60px;
+        }
+        &:horizontal {
+            min-width: 60px;
+        }
+    }
+    
+    &:horizontal {
+        height: $MAIN_SIZE;
+        margin: 0px 20px;
+    }
+
+    &:vertical {
+        width: $MAIN_SIZE;
+        margin: $MAIN_SIZE 0px;
+    }
+
+    &::add-line {
+        margin: 0;
+        border: 1px solid $BORDER_1;
+        background-color: transparent;
+        &:horizontal {
+            height: $MAIN_SIZE - 2px;
+            width: $MAIN_SIZE - 2px;
+            subcontrol-position: right;
+            subcontrol-origin: margin;
+        }
+
+        &:vertical {
+            height: $MAIN_SIZE - 2px;
+            width: $MAIN_SIZE - 2px;
+            subcontrol-position: bottom;
+            subcontrol-origin: margin;
+        }
+    }
+
+    &::sub-line {
+        margin: 0;
+        border: 1px solid $BORDER_1;
+        background-color: transparent;
+        &:horizontal {
+            height: $MAIN_SIZE - 2px;
+            width: $MAIN_SIZE - 2px;
+            subcontrol-position: left;
+            subcontrol-origin: margin;
+        }
+
+        &:vertical {
+            height: $MAIN_SIZE - 2px;
+            width: $MAIN_SIZE - 2px;
+            subcontrol-position: top;
+            subcontrol-origin: margin;
+        }
+    }
+}
+
+// ========================================================================== //
+// QSlider
+
+QSlider {
+    &::handle {
+        background: $FOREGROUND_3;
+        border: $BORDER_1;
+        &:hover {
+            background: $SELECTION_MAIN;
+            border: $SELECTION_MAIN;
+        }
+        &:disabled{background-color: $FOREGROUND_DISABLED;}
+
+        &:horizontal {
+            width: 8px;
+            height: 8px;
+            margin: -8px 0px;
+            border-radius: 2px;
+        }
+
+        &:vertical {
+            width: 8px;
+            height: 8px;
+            margin: 0 -8px;
+            border-radius: 2px;
+        }
+    }
+    &::groove {
+        background: $BACKGROUND_4;
+        border: $BORDER_1;
+
+        &:horizontal {
+            height: 4px;
+            margin: 0px;
+            border-radius: 2px;
+        }
+
+        &:vertical {
+            width: 4px;
+            margin: 0px;
+            border-radius: 2px;
+        }
+    }
+
+    &::add-page {
+        &:vertical {
+            background: $SELECTION_MAIN;
+            &:disabled{background-color: $FOREGROUND_DISABLED;}
+            border: $BORDER_1;
+            width: 4px;
+            margin: 0px;
+            border-radius: 2px;
+        }
+    }
+
+    &::sub-page {
+        &:horizontal {
+            background: $SELECTION_MAIN;
+            &:disabled{background-color: $FOREGROUND_DISABLED;}
+            border: $BORDER_1;
+            height: 4px;
+            margin: 0px;
+            border-radius: 2px;
+
+        }
+    }
+}
+// ========================================================================== //
+// QTabWidget
+
+QTabWidget {
+    &::pane {
+        border: 1px solid $BORDER_1;
+        padding: 1px;
+        &:top { 
+            // Hide border between tab and pane (https://stackoverflow.com/a/10047229/3620725)
+            top: -1px; 
+            // No rounding where edge tab meets pane
+            border-top-left-radius: 0px;
+        }
+        &:bottom { 
+            bottom: -1px; 
+            border-bottom-left-radius: 0px;
+        }
+        &:left { 
+            left: -1px; 
+            border-top-left-radius: 0px;
+        }
+        &:right { 
+            border-top-right-radius: 0px;
+            right: -1px; 
+        }
+    }
+}
+
+QTabBar {
+    qproperty-drawBase: 0;
+    &::tab {
+        &:!selected {
+            // Gradient creates appearance of shadow being cast by pane onto tabs
+            background-color: qlineargradient(0, 1, 0, 0, (0.0 darken($BACKGROUND_4, 5), 0.25 $BACKGROUND_4));
+            border: 1px solid $BORDER_1;
+            margin-top: 2px;
+            
+            &:!last{
+                border-right-color: transparent;
+            }
+            &:last{
+                border-right-width: 1px;
+            
+            }&:previous-selected{
+                border-left-color: transparent;
+            }
+        }
+
+        &:top,
+        &:bottom {
+            padding: 6px 16px;
+        }
+
+        &:left,
+        &:right {
+            padding: 16px 6px;
+        }
+
+        &:top {
+            &:selected { border-bottom-width: 0px; }
+            border-bottom-left-radius: 0px;
+            border-bottom-right-radius: 0px;
+        }
+        &:bottom {
+            &:selected { border-top-width: 0px; }
+            border-top-left-radius: 0px;
+            border-top-right-radius: 0px;
+        }
+        &:left {
+            &:selected { border-right-width: 0px; }
+            border-top-right-radius: 0px;
+            border-bottom-right-radius: 0px;
+        }
+        &:right {
+            &:selected { border-left-width: 0px; }
+            border-bottom-left-radius: 0px;
+            border-top-left-radius: 0px;
+        }
+    }
+}
+// ========================================================================== //
+// QDockWidget
+
+QDockWidget {
+    titlebar-close-icon: url(':/resources/' + $ICON_COLOR + '/close.svg');
+    titlebar-normal-icon: url(':/resources/' + $ICON_COLOR + '/window_undock.svg');
+
+    &::title {
+        /* Better size for title bar */
+        padding: 8px;
+        border: 1px solid $BORDER_1;
+        background-color: $BACKGROUND_1;
+    }
+
+    &::close-button {
+        subcontrol-position: top right;
+        subcontrol-origin: margin;
+        position: absolute;
+        top: 0px; right: 4px; bottom: 0px;
+        width: 14px;
+        icon-size: 14px;
+        &:hover {
+            image: url(':/resources/selected/close.svg');
+        }
+    }
+
+    &::float-button {
+        subcontrol-position: top right;
+        subcontrol-origin: margin;
+        position: absolute;
+        top: 0px; right: 24px; bottom: 0px;
+        width: 14px;
+        icon-size: 14px;
+        &:hover {
+            image: url(':/resources/selected/close.svg');
+        }
+    }
+    
+}
+
+
+// ========================================================================== //
+// QToolBox
+
+QToolBox {
+    &::tab {
+        &:selected {
+            font-weight: bold;
+        }
+    }
+}
+
+
+// ========================================================================== //
+// QMainMenu
+QStatusBar {
+    border: 0px solid;
+    padding: 0px;
+
+    /* Fixes #205, white vertical borders separating items */
+    &::item {
+        border: none;
+    }
+
+
+
+}
+QStatusBar {
+    QWidget {
+        background: transparent;
+    }
+    /* Removes white vertical borders separating items */
+    &::item {
+        border: none;
+    }
+}
+
+// ========================================================================== //
+// Misc
+
+QMenuBar {
+    border-bottom: 1px solid $BORDER_2;
+}
+
+QMenu {
+    border: 1px solid $BORDER_1;
+    background-color: $BACKGROUND_3;
+
+    &::item{
+        &:selected {
+            background-color: $SELECTION_2;
+        }
+    }
+    &::indicator {
+        border: none;
+        outline: none;
+        background-color: transparent;
+        &:selected {
+            background-color: $SELECTION_2;
+        }
+
+    }
+
+    &::separator {
+        height: 1px;
+        background: $FOREGROUND_3;
+        margin: 5px;
+    }
+    
+}
+
+QSplitter {   
+    &::handle {
+        height: 12px;
+        width: 12px;
+    }     
+
+    &::handle:horizontal {
+        image: url(':/resources/' + $ICON_COLOR + '/toolbar_separator_vertical.svg');       
+    }
+    
+    &::handle:vertical {
+        image: url(':/resources/' + $ICON_COLOR + '/toolbar_separator_horizontal.svg');
+    }
+}
+
+
+// ========================================================================== //
+// Rounded Edges
+QToolButton,
+QComboBox,
+QLineEdit,
+QTextEdit,
+QPlainTextEdit,
+QTabWidget::pane,
+QTabBar::tab,
+QDockWidget,
+QToolBox,
+QDateEdit, 
+QDateTimeEdit,
+QGroupBox,
+QDateEdit>QAbstractItemView, 
+QDateTimeEdit>QAbstractItemView,
+.QWidget {
+    border-radius: $SIZE_BORDER_RADIUS;
+}
