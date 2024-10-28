@@ -6,6 +6,7 @@ import atexit
 import tkinter.simpledialog as simpledialog  # Importa o módulo para caixas de diálogo
 import os
 import sys
+from itertools import cycle
 
 class App:
     def __init__(self, root):
@@ -23,10 +24,6 @@ class App:
         self.create_grupos_table()  # Função que cria a tabela de grupos de procedimentos
         self.create_agendamentos_table()
 
-        # Definindo o estilo
-        style = ttk.Style()
-        style.configure("Treeview.Heading", background="#42648f", foreground="#c6b28b", font=('Arial', 10, 'bold'))
-
         # Variáveis
         self.df = None
         self.filtered_df = None
@@ -39,6 +36,17 @@ class App:
         self.login_frame.grid(row=0, column=0, sticky='nsew', padx=10, pady=10)
         # Conectar stdout ao console para depuração
         sys.stdout = sys.__stdout__  # Garantir que o stdout esteja correto
+
+        # Configuração do estilo para as cores das colunas
+        style = ttk.Style()
+        style.configure("Treeview.Heading", foreground="#42648f", font=('Helvetica', 10, 'bold'))
+        style.map("Treeview.Heading", foreground=[("active", "#c6b28b")])
+
+        # Alternar a cor de fundo para as colunas específicas
+        style.configure("Treeview.Heading", background="#c6b28b")
+        style.map("Treeview.Heading", background=[("active", "#42648f")])
+        style.configure("Treeview.odd", background="#f0f0f0")  # Cor cinza claro
+        style.configure("Treeview.even", background="#dcdcdc")  # Cinza mais escuro
 
         tk.Label(self.login_frame, text="Escolha o Fiscal:").grid(row=0, column=0, sticky='w')
         self.fiscal_combobox = ttk.Combobox(self.login_frame, values=self.fiscais)
@@ -68,13 +76,6 @@ class App:
         self.results_frame = ttk.Frame(self.notebook)
         self.fiscal_results_frame = ttk.Frame(self.notebook)  # Nova aba para Resultados do Fiscal
 
-        # Treeview para cada aba com o estilo definido
-        self.data_tree = ttk.Treeview(self.main_frame, show='headings', style="Treeview")
-        self.data_tree.pack(fill=tk.BOTH, expand=True)
-        self.data_tree["columns"] = ["Coluna 1", "Coluna 2", "Coluna 3"]
-        for col in self.data_tree["columns"]:
-            self.data_tree.heading(col, text=col, anchor="center")
-
         self.notebook.add(self.main_frame, text="Atribuir")
         self.notebook.add(self.results_frame, text="Relatório")
         self.notebook.add(self.fiscal_results_frame, text="Resultados Do Fiscal")  # Adicionando a nova aba
@@ -91,6 +92,7 @@ class App:
         self.monthly_tree.column("Mês", anchor="center")
         self.monthly_tree.column("Realizado", anchor="center")
         self.monthly_tree.pack(fill=tk.BOTH, expand=True)
+
 
 
         # Configuração de responsividade
@@ -242,6 +244,7 @@ class App:
         # Limpa a Treeview antes de adicionar os procedimentos padrão
         self.fiscal_results_tree.delete(*self.fiscal_results_tree.get_children())
 
+
         # Lista padrão de procedimentos
         default_procedures = [
             "DECORES (POR DECLARAÇÃO)",
@@ -272,6 +275,7 @@ class App:
         # Adiciona os procedimentos com quantidade e resultado zerados
         for procedure in default_procedures:
             self.fiscal_results_tree.insert("", "end", values=[procedure, 0, 0])
+
 
     def create_table(self):
         cursor = self.conn.cursor()
@@ -404,7 +408,6 @@ class App:
         self.conn.commit()
 
         messagebox.showinfo("Desagrupado", "Procedimentos foram desagrupados e exibidos novamente!")
-
 
 
     def abrir_janela_agrupar(self):
@@ -1040,6 +1043,7 @@ class App:
         # Atualiza a Treeview com os dados filtrados para a aba "Atribuir"
         self.update_treeview(self.data_tree, self.filtered_df)
 
+
         # Remove o frame de login
         self.login_frame.grid_forget()
         self.current_fiscal = fiscal_name
@@ -1068,6 +1072,8 @@ class App:
             messagebox.showinfo("Administrador", "Você está logado como administrador.")
         else:
             messagebox.showinfo("Usuário", "Você está logado como usuário.")
+            # Exemplo de uso para carregar dados com alternância de cor
+            self.update_treeview(self.data_tree, self.filtered_df)
 
     def load_attribuir_data(self):
         """Carrega os dados na aba 'Atribuir', ocultando agendamentos já atribuídos nas tabelas de procedimentos de cada usuário."""
@@ -1129,20 +1135,29 @@ class App:
     def update_treeview(self, tree, df):
         tree.delete(*tree.get_children())
         tree["columns"] = list(df.columns)
+
+        # Configuração de cabeçalhos e centralização das colunas
         for col in df.columns:
             tree.heading(col, text=col)
             tree.column(col, anchor="center")
 
+        # Adicionar linhas com tags 'even' e 'odd' alternadamente
         for index, row in df.iterrows():
-            # Formatar a data para DD-MM-YYYY (supondo que a primeira coluna seja a data)
             formatted_row = list(row)
             if isinstance(formatted_row[0], str) and len(formatted_row[0]) > 10:
-                # Mantém apenas a parte da data e reformata
-                date_parts = formatted_row[0][:10].split('-')  # 'YYYY-MM-DD'
+                # Reformata a data para DD-MM-YYYY
+                date_parts = formatted_row[0][:10].split('-')
                 if len(date_parts) == 3:
-                    formatted_row[0] = f"{date_parts[2]}-{date_parts[1]}-{date_parts[0]}"  # DD-MM-YYYY
+                    formatted_row[0] = f"{date_parts[2]}-{date_parts[1]}-{date_parts[0]}"
 
-            tree.insert("", "end", values=formatted_row)
+            # Alternar tags para cada linha
+            tag = 'even' if index % 2 == 0 else 'odd'
+            tree.insert("", "end", values=formatted_row, tags=(tag,))
+
+        # Forçar a atualização da árvore para aplicar as cores
+        tree.tag_configure('odd', background='#f0f0f0')
+        tree.tag_configure('even', background='#dcdcdc')
+
 
     def load_results(self):
         """Carrega os dados da tabela do fiscal logado ou de todos os fiscais na aba Relatório"""
@@ -1228,7 +1243,7 @@ class App:
 
                 # Adiciona a linha com o procedimento e a quantidade na Treeview da aba Relatório
                 self.results_tree.insert("", "end", values=formatted_row + [resultado])
-
+                self.update_treeview(self.results_tree, self.filtered_df)  # Aplica cores na aba "Relatório"
     def load_all_procedures_for_admin(self):
         """Carrega os procedimentos de todos os fiscais e os insere na variável self.filtered_df"""
 
@@ -1425,7 +1440,8 @@ class App:
                 self.fiscal_results_tree.insert("", "end", values=row_values)
 
         self.fiscal_results_tree.bind("<Double-1>", self.toggle_group)
-
+        # Após carregar os dados, aplicar as cores
+        self.update_treeview(self.fiscal_results_tree, self.filtered_df)  # Chama a função para aplicar as cores
     def toggle_group(self, event):
         """Expande ou colapsa os procedimentos dentro de um grupo ao clicar no grupo."""
         item_id = self.fiscal_results_tree.identify_row(event.y)
