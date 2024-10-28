@@ -23,6 +23,10 @@ class App:
         self.create_grupos_table()  # Função que cria a tabela de grupos de procedimentos
         self.create_agendamentos_table()
 
+        # Definindo o estilo
+        style = ttk.Style()
+        style.configure("Treeview.Heading", background="#42648f", foreground="#c6b28b", font=('Arial', 10, 'bold'))
+
         # Variáveis
         self.df = None
         self.filtered_df = None
@@ -63,6 +67,13 @@ class App:
         self.main_frame = ttk.Frame(self.notebook)
         self.results_frame = ttk.Frame(self.notebook)
         self.fiscal_results_frame = ttk.Frame(self.notebook)  # Nova aba para Resultados do Fiscal
+
+        # Treeview para cada aba com o estilo definido
+        self.data_tree = ttk.Treeview(self.main_frame, show='headings', style="Treeview")
+        self.data_tree.pack(fill=tk.BOTH, expand=True)
+        self.data_tree["columns"] = ["Coluna 1", "Coluna 2", "Coluna 3"]
+        for col in self.data_tree["columns"]:
+            self.data_tree.heading(col, text=col, anchor="center")
 
         self.notebook.add(self.main_frame, text="Atribuir")
         self.notebook.add(self.results_frame, text="Relatório")
