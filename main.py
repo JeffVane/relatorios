@@ -244,8 +244,6 @@ class App:
             self.results_tree.heading(col, text=col)  # Define os cabeçalhos
             self.results_tree.column(col, anchor="center")  # Centraliza as colunas
             self.load_default_procedures()  # Carrega os procedimentos padrão
-            # Carrega os procedimentos padrão após a criação da Treeview
-            self.load_default_procedures()  # Aqui é o local correto para chamar a função
 
         self.default_procedures = [
         "DECORES (POR DECLARAÇÃO)",
@@ -1235,7 +1233,7 @@ class App:
         tree.tag_configure('even', background='#dcdcdc')
 
     def load_results(self):
-        """Carrega os dados da tabela do fiscal logado ou de todos os fiscais na aba Relatório"""
+        """Carrega os dados da tabela do fiscal logado ou de todos os fiscais na aba Relatório, evitando duplicações."""
         if not self.current_fiscal:
             return
 
@@ -1246,11 +1244,13 @@ class App:
         row_color_1 = "#f0f0f0"
         row_color_2 = "#dcdcdc"
 
+        # Conjunto para rastrear duplicatas
+        procedimentos_carregados = set()
+
         if self.is_admin:
             # Carrega os dados de todos os fiscais se o usuário for administrador
             all_procedures = []
 
-            # Itera sobre todos os fiscais para combinar os procedimentos
             for fiscal in self.fiscais:
                 table_name = f'procedimentos_{fiscal}'
 
@@ -1265,11 +1265,13 @@ class App:
                     f"SELECT coluna_1, coluna_2, coluna_3, coluna_4, coluna_5, coluna_6, procedimento, quantidade FROM {table_name}")
                 db_rows = cursor.fetchall()
 
-                # Combinar os procedimentos de todos os fiscais
+                # Adiciona apenas procedimentos únicos
                 for row in db_rows:
-                    all_procedures.append(row)
+                    if tuple(row) not in procedimentos_carregados:
+                        all_procedures.append(row)
+                        procedimentos_carregados.add(tuple(row))
 
-            # Adicionar os procedimentos combinados na Treeview da aba Relatório com alternância de cores
+            # Adicionar os procedimentos na Treeview com alternância de cores
             for index, row in enumerate(all_procedures):
                 formatted_row = list(row)
 
@@ -1306,27 +1308,26 @@ class App:
             rows = cursor.fetchall()
 
             for index, row in enumerate(rows):
-                formatted_row = list(row)
+                if tuple(row) not in procedimentos_carregados:
+                    procedimentos_carregados.add(tuple(row))
+                    formatted_row = list(row)
 
-                # Calcula o resultado (quantidade * peso do procedimento)
-                procedimento = formatted_row[6]
-                quantidade = formatted_row[7]
-                peso = self.procedure_weights.get(procedimento, 1)  # Peso padrão é 1 se não encontrado
-                resultado = quantidade * peso
+                    # Calcula o resultado (quantidade * peso do procedimento)
+                    procedimento = formatted_row[6]
+                    quantidade = formatted_row[7]
+                    peso = self.procedure_weights.get(procedimento, 1)  # Peso padrão é 1 se não encontrado
+                    resultado = quantidade * peso
 
-                # Formatar a primeira coluna como data (DD-MM-YYYY)
-                if isinstance(formatted_row[0], str) and len(formatted_row[0]) > 10:
-                    date_parts = formatted_row[0][:10].split('-')  # 'YYYY-MM-DD'
-                    if len(date_parts) == 3:
-                        formatted_row[0] = f"{date_parts[2]}-{date_parts[1]}-{date_parts[0]}"  # Formato DD-MM-YYYY
+                    # Formatar a primeira coluna como data (DD-MM-YYYY)
+                    if isinstance(formatted_row[0], str) and len(formatted_row[0]) > 10:
+                        date_parts = formatted_row[0][:10].split('-')  # 'YYYY-MM-DD'
+                        if len(date_parts) == 3:
+                            formatted_row[0] = f"{date_parts[2]}-{date_parts[1]}-{date_parts[0]}"  # Formato DD-MM-YYYY
 
-                # Define a cor da linha com base na alternância
-                row_color = row_color_1 if index % 2 == 0 else row_color_2
-                self.results_tree.insert("", "end", values=formatted_row + [resultado], tags=('row',))
-                self.results_tree.tag_configure('row', background=row_color)
-
-                # Adiciona a linha com o procedimento e a quantidade na Treeview da aba Relatório
-                self.results_tree.insert("", "end", values=formatted_row + [resultado])
+                    # Define a cor da linha com base na alternância
+                    row_color = row_color_1 if index % 2 == 0 else row_color_2
+                    self.results_tree.insert("", "end", values=formatted_row + [resultado], tags=('row',))
+                    self.results_tree.tag_configure('row', background=row_color)
 
     def load_all_procedures_for_admin(self):
         """Carrega os procedimentos de todos os fiscais e os insere na variável self.filtered_df"""
