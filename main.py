@@ -1,12 +1,25 @@
 import pandas as pd
 import tkinter as tk
-from tkinter import ttk, filedialog, messagebox, MULTIPLE
+from tkinter import ttk, filedialog, messagebox, MULTIPLE, Toplevel, Label, Button
 import sqlite3
 import atexit
 import tkinter.simpledialog as simpledialog  # Importa o módulo para caixas de diálogo
 import os
 import sys
 from itertools import cycle
+from tkinter import font
+from reportlab.lib.pagesizes import A4
+from reportlab.pdfgen import canvas
+import pandas as pd
+from reportlab.pdfbase.pdfmetrics import stringWidth
+from reportlab.lib.units import inch
+from reportlab.lib.pagesizes import landscape, A4
+import textwrap
+from reportlab.pdfgen import canvas
+from reportlab.lib import colors
+from reportlab.platypus import Table, TableStyle
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph
+from reportlab.lib.styles import getSampleStyleSheet
 
 class App:
     def __init__(self, root):
@@ -36,6 +49,8 @@ class App:
         self.login_frame.grid(row=0, column=0, sticky='nsew', padx=10, pady=10)
         # Conectar stdout ao console para depuração
         sys.stdout = sys.__stdout__  # Garantir que o stdout esteja correto
+
+
 
         # Configuração do estilo para as cores das colunas
         style = ttk.Style()
@@ -87,22 +102,32 @@ class App:
 
         # Configurar a Treeview para exibir os resultados mensais
         self.monthly_tree = ttk.Treeview(self.resultado_mensal_frame, columns=("Mês", "Realizado"), show='headings')
+        self.monthly_tree.pack(fill=tk.BOTH, expand=True)
+
+        # Adicionar barras de rolagem horizontal e vertical para a Treeview de resultados mensais
+        self.monthly_tree_scrollbar_x = ttk.Scrollbar(self.monthly_tree, orient=tk.HORIZONTAL, command=self.monthly_tree.xview)
+        self.monthly_tree_scrollbar_x.pack(fill=tk.X, side=tk.BOTTOM)
+        self.monthly_tree_scrollbar_y = ttk.Scrollbar(self.monthly_tree, orient=tk.VERTICAL, command=self.monthly_tree.yview)
+        self.monthly_tree_scrollbar_y.pack(fill=tk.Y, side=tk.RIGHT)
+        self.monthly_tree.configure(xscrollcommand=self.monthly_tree_scrollbar_x.set, yscrollcommand=self.monthly_tree_scrollbar_y.set)
+
         self.monthly_tree.heading("Mês", text="Mês")
         self.monthly_tree.heading("Realizado", text="Quantidade Realizada")
         self.monthly_tree.column("Mês", anchor="center")
         self.monthly_tree.column("Realizado", anchor="center")
-        self.monthly_tree.pack(fill=tk.BOTH, expand=True)
-
-
-
-        # Configuração de responsividade
-        self.root.grid_rowconfigure(1, weight=1)
-        self.root.grid_columnconfigure(0, weight=1)
 
         # Treeview para Resultados do Fiscal
         self.fiscal_results_tree = ttk.Treeview(self.fiscal_results_frame, show='headings')
         self.fiscal_results_tree.pack(fill=tk.BOTH, expand=True)
-        self.fiscal_results_tree["columns"] = ['Procedimento','Meta Anual CFC', 'META+ % CRCDF','Realizado', 'A Realizar',"A Realizar CFC"]
+
+        # Adicionar barras de rolagem horizontal e vertical para a Treeview de resultados do fiscal
+        self.fiscal_results_scrollbar_x = ttk.Scrollbar(self.fiscal_results_tree, orient=tk.HORIZONTAL, command=self.fiscal_results_tree.xview)
+        self.fiscal_results_scrollbar_x.pack(fill=tk.X, side=tk.BOTTOM)
+        self.fiscal_results_scrollbar_y = ttk.Scrollbar(self.fiscal_results_tree, orient=tk.VERTICAL, command=self.fiscal_results_tree.yview)
+        self.fiscal_results_scrollbar_y.pack(fill=tk.Y, side=tk.RIGHT)
+        self.fiscal_results_tree.configure(xscrollcommand=self.fiscal_results_scrollbar_x.set, yscrollcommand=self.fiscal_results_scrollbar_y.set)
+
+        self.fiscal_results_tree["columns"] = ['Procedimento','Meta Anual CFC', 'Meta+ % CRCDF','Realizado', 'A Realizar',"A Realizar CFC"]
 
         for col in self.fiscal_results_tree["columns"]:
             self.fiscal_results_tree.heading(col, text=col)
@@ -112,10 +137,20 @@ class App:
         self.data_tree = ttk.Treeview(self.main_frame, show='headings')
         self.data_tree.pack(fill=tk.BOTH, expand=True)
 
+        # Adicionar barras de rolagem horizontal e vertical para a Treeview principal
+        self.data_tree_scrollbar_x = ttk.Scrollbar(self.data_tree, orient=tk.HORIZONTAL, command=self.data_tree.xview)
+        self.data_tree_scrollbar_x.pack(fill=tk.X, side=tk.BOTTOM)
+        self.data_tree_scrollbar_y = ttk.Scrollbar(self.data_tree, orient=tk.VERTICAL, command=self.data_tree.yview)
+        self.data_tree_scrollbar_y.pack(fill=tk.Y, side=tk.RIGHT)
+        self.data_tree.configure(xscrollcommand=self.data_tree_scrollbar_x.set, yscrollcommand=self.data_tree_scrollbar_y.set)
+
         self.data_tree.bind("<ButtonRelease-1>", self.select_row)
 
-        self.procedure_label = tk.Label(self.main_frame, text="Escolha os procedimentos:")
-        self.procedure_label.pack(pady=5)
+        # Configuração de responsividade
+        self.root.grid_rowconfigure(1, weight=1)
+        self.root.grid_columnconfigure(0, weight=1)
+
+
 
         # Dicionário de pesos para cada procedimento
         self.procedure_weights = {
@@ -238,12 +273,10 @@ class App:
             "REGISTRO DE RT DE ORGANIZAÇÃO NÃO CONTÁBIL (PROFISSIONAL/ORGANIZAÇÃO CONTÁBIL) (POR AGENDAMENTO)"
     ]
 
-
     def load_default_procedures(self):
         """Carrega a lista padrão de procedimentos na aba 'Resultados do Fiscal'"""
         # Limpa a Treeview antes de adicionar os procedimentos padrão
         self.fiscal_results_tree.delete(*self.fiscal_results_tree.get_children())
-
 
         # Lista padrão de procedimentos
         default_procedures = [
@@ -272,10 +305,14 @@ class App:
             "REGISTRO DE RT DE ORGANIZAÇÃO NÃO CONTÁBIL (PROFISSIONAL/ORGANIZAÇÃO CONTÁBIL) (POR AGENDAMENTO)"
         ]
 
-        # Adiciona os procedimentos com quantidade e resultado zerados
-        for procedure in default_procedures:
-            self.fiscal_results_tree.insert("", "end", values=[procedure, 0, 0])
-
+        # Adiciona os procedimentos com quantidade e resultado zerados e alternância de cores
+        row_color_1 = "#f0f0f0"
+        row_color_2 = "#dcdcdc"
+        for index, procedure in enumerate(default_procedures):
+            # Define a cor da linha com base na alternância
+            row_color = row_color_1 if index % 2 == 0 else row_color_2
+            self.fiscal_results_tree.insert("", "end", values=[procedure, 0, 0], tags=('row',))
+            self.fiscal_results_tree.tag_configure('row', background=row_color)
 
     def create_table(self):
         cursor = self.conn.cursor()
@@ -597,20 +634,17 @@ class App:
             self.load_fiscal_results(fiscal_selecionado=self.current_fiscal)
 
     def create_admin_combobox_for_monthly_results(self):
-        """Cria uma combobox para filtrar os resultados mensais por fiscal apenas para o administrador."""
-        # Verifique se o usuário é administrador e se a combobox já não foi criada
-        if self.is_admin:
-            tk.Label(self.resultado_mensal_frame, text="Filtrar por Fiscal:").pack(pady=5)
+        """Cria uma combobox para filtrar os resultados mensais por fiscal, disponível para todos os usuários."""
+        # Adicionar o label e a combobox para o filtro
+        tk.Label(self.resultado_mensal_frame, text="Filtrar por Fiscal:").pack(pady=5)
 
-            # Combobox para selecionar 'Geral' ou um fiscal específico
-            self.fiscal_monthly_combobox = ttk.Combobox(self.resultado_mensal_frame, values=["Geral"] + self.fiscais)
-            self.fiscal_monthly_combobox.pack(pady=5)
-            self.fiscal_monthly_combobox.set("Geral")  # Valor padrão
+        # Combobox para selecionar 'Geral' ou um fiscal específico
+        self.fiscal_monthly_combobox = ttk.Combobox(self.resultado_mensal_frame, values=["Geral"] + self.fiscais)
+        self.fiscal_monthly_combobox.pack(pady=5)
+        self.fiscal_monthly_combobox.set("Geral")  # Define "Geral" como o valor padrão
 
-            # Vincular a função de filtro ao evento de seleção da combobox
-            self.fiscal_monthly_combobox.bind("<<ComboboxSelected>>", self.filter_monthly_results)
-        else:
-            return  # Não faz nada se o usuário não for administrador
+        # Vincular a função de filtro ao evento de seleção da combobox
+        self.fiscal_monthly_combobox.bind("<<ComboboxSelected>>", self.filter_monthly_results)
 
     def filter_monthly_results(self, event=None):
         """Filtra os resultados mensais com base no fiscal selecionado."""
@@ -629,16 +663,26 @@ class App:
         cursor = self.conn.cursor()
 
         # Definir os meses como colunas
-        meses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
-                 "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"]
+        meses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro",
+                 "Novembro", "Dezembro"]
 
         # Definir as colunas da Treeview (Procedimento, Janeiro a Dezembro, e Total Realizado)
         colunas = ["Procedimento"] + meses + ["Total Realizado"]
         self.monthly_tree["columns"] = colunas
 
+        # Ajustar a largura de cada coluna
+        self.monthly_tree.column("Procedimento", width=850, anchor="center")  # Largura para "Procedimento"
+        for mes in meses:
+            self.monthly_tree.column(mes, width=65, anchor="center")  # Largura reduzida para meses
+        self.monthly_tree.column("Total Realizado", width=130, anchor="center")  # Maior largura para "Total Realizado"
+
         for col in colunas:
             self.monthly_tree.heading(col, text=col)
             self.monthly_tree.column(col, anchor="center")
+
+        # Definir estilos de cores alternadas
+        self.monthly_tree.tag_configure('odd', background="#f0f0f0")
+        self.monthly_tree.tag_configure('even', background="#dcdcdc")
 
         # Inicializar um dicionário para armazenar os resultados por procedimento e por mês
         resultados_mensais = {}
@@ -694,11 +738,13 @@ class App:
                 resultados_mensais[procedimento][mes_agendado] += quantidade_com_peso
                 resultados_mensais[procedimento]['Total'] += quantidade_com_peso
 
-        # Inserir os dados na Treeview
-        for procedimento, valores_mensais in resultados_mensais.items():
+        # Inserir os dados na Treeview com cores alternadas
+        for index, (procedimento, valores_mensais) in enumerate(resultados_mensais.items()):
+            # Alternar a cor da linha com base no índice
+            tag = 'odd' if index % 2 == 0 else 'even'
             # Preparar a linha com o procedimento, as quantidades de cada mês e o total
             row_values = [procedimento] + [valores_mensais[mes] for mes in range(1, 13)] + [valores_mensais['Total']]
-            self.monthly_tree.insert("", "end", values=row_values)
+            self.monthly_tree.insert("", "end", values=row_values, tags=(tag,))
 
     def allow_admin_meta_editing(self):
         """Permite que o administrador edite os valores de Meta Anual CFC e META+ % CRCDF"""
@@ -774,6 +820,8 @@ class App:
         combined_data = {}
 
         cursor = self.conn.cursor()
+        row_color_1 = "#f0f0f0"
+        row_color_2 = "#dcdcdc"
 
         # Itera sobre todos os fiscais para combinar os resultados
         for fiscal in self.fiscais:
@@ -803,8 +851,8 @@ class App:
         cursor.execute("SELECT procedimento, meta_anual_cfc, crcdf_30 FROM metas_globais")
         metas_globais = {row[0]: (row[1], row[2]) for row in cursor.fetchall()}
 
-        # Adicionar os procedimentos combinados na Treeview da aba Resultados do Fiscal
-        for procedure in self.procedure_weights.keys():
+        # Adicionar os procedimentos combinados na Treeview da aba Resultados do Fiscal com alternância de cores
+        for index, procedure in enumerate(self.procedure_weights.keys()):
             quantidade = combined_data.get(procedure, 0)
             peso = self.procedure_weights.get(procedure, 1)
             realizado = quantidade * peso
@@ -815,9 +863,12 @@ class App:
             # Calcular 'A Realizar' com base no 'META+ % CRCDF'
             a_realizar = crcdf_30 - realizado
 
-            # Adiciona o procedimento combinado na Treeview
+            # Define a cor da linha com base na alternância
+            row_color = row_color_1 if index % 2 == 0 else row_color_2
             self.fiscal_results_tree.insert("", "end",
-                                            values=[procedure, meta_anual_cfc, crcdf_30, realizado, a_realizar])
+                                            values=[procedure, meta_anual_cfc, crcdf_30, realizado, a_realizar],
+                                            tags=('row',))
+            self.fiscal_results_tree.tag_configure('row', background=row_color)
 
     def save_admin_metas(self):
         cursor = self.conn.cursor()
@@ -963,6 +1014,29 @@ class App:
         # Define se o usuário logado é administrador
         self.is_admin = is_admin == 1
 
+        # Adicionar botões de exportação apenas para administradores
+        if self.is_admin:
+            # Botões de exportação para a aba "Resultados Do Fiscal"
+            export_fiscal_pdf_button = tk.Button(self.fiscal_results_frame, text="Exportar para PDF",
+                                                 command=lambda: self.export_fiscal_results(self.fiscal_results_tree,
+                                                                                            "pdf"))
+            export_fiscal_pdf_button.pack(pady=5)
+
+            export_fiscal_excel_button = tk.Button(self.fiscal_results_frame, text="Exportar para Excel",
+                                                   command=lambda: self.export_fiscal_results(self.fiscal_results_tree,
+                                                                                              "excel"))
+            export_fiscal_excel_button.pack(pady=5)
+
+            # Botões de exportação para a aba "Resultado Mensal"
+            export_monthly_pdf_button = tk.Button(self.resultado_mensal_frame, text="Exportar para PDF",
+                                                  command=lambda: self.export_monthly_results(self.monthly_tree, "pdf"))
+            export_monthly_pdf_button.pack(pady=5)
+
+            export_monthly_excel_button = tk.Button(self.resultado_mensal_frame, text="Exportar para Excel",
+                                                    command=lambda: self.export_monthly_results(self.monthly_tree,
+                                                                                                "excel"))
+            export_monthly_excel_button.pack(pady=5)
+
         # Atualizar a combobox logo após o login, removendo o nome do administrador
         if self.is_admin:
             usuarios_comuns = [f for f in self.fiscais if f != fiscal_name]
@@ -980,7 +1054,6 @@ class App:
             self.load_fiscal_results_button.pack_forget()  # Oculta o botão para usuários comuns
 
         # Chama a função para criar a combobox na aba Resultado Mensal, se for administrador
-        if self.is_admin:
             self.create_admin_combobox_for_monthly_results()
 
         # Abrir o arquivo Excel
@@ -1100,10 +1173,13 @@ class App:
         print("Agendamentos atribuídos encontrados (strings):", assigned_agendamentos)
         print("Agendamentos antes da filtragem (strings):", [str(i) for i in self.filtered_df['Número Agendamento']])
 
-        # Filtrar os agendamentos que já foram atribuídos
+        # Certifique-se de que self.filtered_df seja uma cópia para evitar o erro
+        self.filtered_df = self.filtered_df.copy()
+
+        # Converte a coluna 'Número Agendamento' para string
         if 'Número Agendamento' in self.filtered_df.columns:
-            # Converte a coluna para string para garantir compatibilidade com assigned_agendamentos
             self.filtered_df['Número Agendamento'] = self.filtered_df['Número Agendamento'].astype(str)
+            # Filtrar os agendamentos que já foram atribuídos
             self.filtered_df = self.filtered_df[~self.filtered_df['Número Agendamento'].isin(assigned_agendamentos)]
 
         # Debug: Imprimir DataFrame após a filtragem para verificação
@@ -1158,7 +1234,6 @@ class App:
         tree.tag_configure('odd', background='#f0f0f0')
         tree.tag_configure('even', background='#dcdcdc')
 
-
     def load_results(self):
         """Carrega os dados da tabela do fiscal logado ou de todos os fiscais na aba Relatório"""
         if not self.current_fiscal:
@@ -1168,6 +1243,8 @@ class App:
         self.results_tree.delete(*self.results_tree.get_children())
 
         cursor = self.conn.cursor()
+        row_color_1 = "#f0f0f0"
+        row_color_2 = "#dcdcdc"
 
         if self.is_admin:
             # Carrega os dados de todos os fiscais se o usuário for administrador
@@ -1192,8 +1269,8 @@ class App:
                 for row in db_rows:
                     all_procedures.append(row)
 
-            # Adicionar os procedimentos combinados na Treeview da aba Relatório
-            for row in all_procedures:
+            # Adicionar os procedimentos combinados na Treeview da aba Relatório com alternância de cores
+            for index, row in enumerate(all_procedures):
                 formatted_row = list(row)
 
                 # Calcula o resultado (quantidade * peso do procedimento)
@@ -1208,8 +1285,10 @@ class App:
                     if len(date_parts) == 3:
                         formatted_row[0] = f"{date_parts[2]}-{date_parts[1]}-{date_parts[0]}"  # Formato DD-MM-YYYY
 
-                # Adiciona a linha com o procedimento e a quantidade na Treeview da aba Relatório
-                self.results_tree.insert("", "end", values=formatted_row + [resultado])
+                # Define a cor da linha com base na alternância
+                row_color = row_color_1 if index % 2 == 0 else row_color_2
+                self.results_tree.insert("", "end", values=formatted_row + [resultado], tags=('row',))
+                self.results_tree.tag_configure('row', background=row_color)
 
         else:
             # Carregar apenas os dados do fiscal logado
@@ -1226,7 +1305,7 @@ class App:
                 f"SELECT coluna_1, coluna_2, coluna_3, coluna_4, coluna_5, coluna_6, procedimento, quantidade FROM {table_name}")
             rows = cursor.fetchall()
 
-            for row in rows:
+            for index, row in enumerate(rows):
                 formatted_row = list(row)
 
                 # Calcula o resultado (quantidade * peso do procedimento)
@@ -1241,9 +1320,14 @@ class App:
                     if len(date_parts) == 3:
                         formatted_row[0] = f"{date_parts[2]}-{date_parts[1]}-{date_parts[0]}"  # Formato DD-MM-YYYY
 
+                # Define a cor da linha com base na alternância
+                row_color = row_color_1 if index % 2 == 0 else row_color_2
+                self.results_tree.insert("", "end", values=formatted_row + [resultado], tags=('row',))
+                self.results_tree.tag_configure('row', background=row_color)
+
                 # Adiciona a linha com o procedimento e a quantidade na Treeview da aba Relatório
                 self.results_tree.insert("", "end", values=formatted_row + [resultado])
-                self.update_treeview(self.results_tree, self.filtered_df)  # Aplica cores na aba "Relatório"
+
     def load_all_procedures_for_admin(self):
         """Carrega os procedimentos de todos os fiscais e os insere na variável self.filtered_df"""
 
@@ -1313,7 +1397,7 @@ class App:
             self.fiscal_results_tree.column(col, anchor="w")
 
         # Função para ajustar dinamicamente a largura da coluna 'Procedimento'
-        # Função para ajustar dinamicamente a largura da coluna 'Procedimento'
+
         def ajustar_largura_coluna_procedimento(procedimento):
             largura_procedimento = len(procedimento) * 10  # Multiplica o comprimento por 10 para ajustar dinamicamente
             self.fiscal_results_tree.column("Procedimento", width=largura_procedimento)
@@ -1440,8 +1524,7 @@ class App:
                 self.fiscal_results_tree.insert("", "end", values=row_values)
 
         self.fiscal_results_tree.bind("<Double-1>", self.toggle_group)
-        # Após carregar os dados, aplicar as cores
-        self.update_treeview(self.fiscal_results_tree, self.filtered_df)  # Chama a função para aplicar as cores
+
     def toggle_group(self, event):
         """Expande ou colapsa os procedimentos dentro de um grupo ao clicar no grupo."""
         item_id = self.fiscal_results_tree.identify_row(event.y)
@@ -1502,6 +1585,147 @@ class App:
         self.load_fiscal_results()
         self.load_results()
         self.load_monthly_results()
+
+    def export_fiscal_results(self, tree, export_type):
+        # Capturar todos os dados visíveis na Treeview "Resultados Do Fiscal"
+        data = [tree.item(item)["values"] for item in tree.get_children()]
+
+        # Adicionar o nome do usuário em cada linha de dados
+        user_column = [self.fiscal_select_combobox.get()] * len(data)  # Coluna com o nome do fiscal selecionado
+        data_with_user = [[user_column[i]] + row for i, row in enumerate(data)]
+
+        # Verificar se há dados para exportar
+        if not data_with_user:
+            messagebox.showwarning("Aviso", "Não há dados para exportar.")
+            return
+
+        # Remover a coluna "Usuário" para exportação no Excel
+        data_without_user = [row[1:] for row in data_with_user]  # Remove a primeira coluna
+
+        # Definir as colunas para o Excel (sem a coluna "Usuário")
+        columns = ["Procedimento", "Meta Anual CFC", "Meta+ % CRCDF", "MFA", "Realizado", "A Realizar",
+                   "A Realizar CFC"]
+
+        # Confirmar o tipo de exportação e chamar a função correta
+        if export_type == "pdf":
+            self.export_to_pdf(data_with_user, "Resultados Do Fiscal")
+        elif export_type == "excel":
+            self.export_to_excel(data_without_user, columns, "Resultados Do Fiscal")
+
+    def export_to_excel(self, data, columns, title):
+        # Caminho para salvar o arquivo Excel
+        filename = filedialog.asksaveasfilename(defaultextension=".xlsx", filetypes=[("Excel files", "*.xlsx")])
+        if not filename:
+            return
+
+        # Exportar para Excel usando pandas
+        df = pd.DataFrame(data, columns=columns)
+        df.to_excel(filename, index=False, sheet_name=title)
+        messagebox.showinfo("Exportação Completa", f"Dados exportados para {filename}")
+
+    def export_to_pdf(self, data, report_title):
+        # Caminho para salvar o PDF
+        filename = filedialog.asksaveasfilename(defaultextension=".pdf", filetypes=[("PDF files", "*.pdf")])
+        if not filename:
+            return
+
+        # Configuração do documento PDF
+        pdf = SimpleDocTemplate(filename, pagesize=landscape(A4), leftMargin=20, rightMargin=20, topMargin=20,
+                                bottomMargin=20)
+        styles = getSampleStyleSheet()
+        style_normal = styles['Normal']
+        style_normal.fontSize = 8
+
+        # Configuração dos cabeçalhos e dados (sem a coluna "Usuário")
+        columns = ["Procedimento", "Meta Anual CFC", "Meta+ % CRCDF", "MFA", "Realizado", "A Realizar",
+                   "A Realizar CFC"]
+        formatted_data = [[Paragraph(str(value), style_normal) for value in row[1:]] for row in data]
+        formatted_data.insert(0, [Paragraph(col, styles['Heading4']) for col in columns])
+
+        # Configuração da tabela no PDF
+        table = Table(formatted_data)
+        table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, -1), 8),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
+            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.whitesmoke, colors.lightgrey]),
+        ]))
+
+        # Criar o PDF
+        pdf.build([table])
+        messagebox.showinfo("Exportação Completa", f"Dados exportados para {filename}")
+
+    def export_monthly_results(self, tree, export_type):
+        # Capturar todos os dados visíveis na Treeview "Resultado Mensal"
+        data = [tree.item(item)["values"] for item in tree.get_children()]
+
+        # Verificar se há dados para exportar
+        if not data:
+            messagebox.showwarning("Aviso", "Não há dados para exportar.")
+            return
+
+        # Confirmar o tipo de exportação e chamar a função correspondente
+        if export_type == "pdf":
+            self.export_monthly_to_pdf(data)
+        elif export_type == "excel":
+            self.export_monthly_to_excel(data)
+
+    def export_monthly_to_pdf(self, data):
+        # Caminho para salvar o PDF
+        filename = filedialog.asksaveasfilename(defaultextension=".pdf", filetypes=[("PDF files", "*.pdf")])
+        if not filename:
+            return
+
+        # Configuração do documento PDF
+        pdf = SimpleDocTemplate(filename, pagesize=landscape(A4), leftMargin=20, rightMargin=20, topMargin=20,
+                                bottomMargin=20)
+        styles = getSampleStyleSheet()
+        style_normal = styles['Normal']
+        style_normal.fontSize = 8
+
+        # Colunas específicas para "Resultado Mensal"
+        columns = ["Procedimento", "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto",
+                   "Setembro", "Outubro", "Novembro", "Dezembro", "Total Realizado"]
+
+        # Formatar os dados para o PDF
+        formatted_data = [[Paragraph(str(value), style_normal) for value in row] for row in data]
+        formatted_data.insert(0, [Paragraph(col, styles['Heading4']) for col in columns])
+
+        # Configuração da tabela no PDF
+        table = Table(formatted_data)
+        table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, -1), 8),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
+            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.whitesmoke, colors.lightgrey]),
+        ]))
+
+        # Criar o PDF
+        pdf.build([table])
+        messagebox.showinfo("Exportação Completa", f"Dados exportados para {filename}")
+
+    def export_monthly_to_excel(self, data):
+        # Caminho para salvar o arquivo Excel
+        filename = filedialog.asksaveasfilename(defaultextension=".xlsx", filetypes=[("Excel files", "*.xlsx")])
+        if not filename:
+            return
+
+        # Colunas específicas para "Resultado Mensal"
+        columns = ["Procedimento", "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto",
+                   "Setembro", "Outubro", "Novembro", "Dezembro", "Total Realizado"]
+
+        # Exportar para Excel usando pandas
+        df = pd.DataFrame(data, columns=columns)
+        df.to_excel(filename, index=False)
+        messagebox.showinfo("Exportação Completa", f"Dados exportados para {filename}")
 
     def save_to_database(self, row, fiscal_destinatario):
         """Salva os dados na tabela de procedimentos do fiscal destinatário no banco de dados"""
