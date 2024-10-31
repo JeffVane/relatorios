@@ -1395,39 +1395,36 @@ class App:
         # Limpa a Treeview da aba Resultados do Fiscal
         self.fiscal_results_tree.delete(*self.fiscal_results_tree.get_children())
 
+        # Configuração para alternância de cores
+        self.fiscal_results_tree.tag_configure('odd', background='#f0f0f0')  # Cinza claro
+        self.fiscal_results_tree.tag_configure('even', background='#ffffff')  # Branco
+
         cursor = self.conn.cursor()
 
         # Verificar os usuários comuns, excluindo o administrador
         if self.is_admin:
-            # Para administradores, permite carregar dados de "Geral" ou fiscais específicos
             if fiscal_selecionado == "Geral" or fiscal_selecionado == self.current_fiscal:
                 cursor.execute("SELECT name FROM fiscals WHERE is_admin=0")
                 usuarios_comuns = [row[0] for row in cursor.fetchall()]
             else:
                 usuarios_comuns = [fiscal_selecionado] if fiscal_selecionado else []
         else:
-            # Para usuários comuns, carrega os fiscais sem incluir o administrador
             cursor.execute("SELECT name FROM fiscals WHERE is_admin=0 AND name != ?", (self.current_fiscal,))
             usuarios_comuns = [row[0] for row in cursor.fetchall()]
-            usuarios_comuns.append(self.current_fiscal)  # Inclui o próprio fiscal logado para ver seus próprios dados
+            usuarios_comuns.append(self.current_fiscal)
 
-        # Definir a ordem das colunas
         colunas = ['Procedimento', 'Meta Anual CFC', 'Meta+ % CRCDF'] + usuarios_comuns + ['Realizado', 'A Realizar',
                                                                                            'A Realizar CFC']
         self.fiscal_results_tree["columns"] = colunas
 
-        # Definir o cabeçalho das colunas
         for col in colunas:
             self.fiscal_results_tree.heading(col, text=col)
             self.fiscal_results_tree.column(col, anchor="w")
 
-        # Função para ajustar dinamicamente a largura da coluna 'Procedimento'
-
         def ajustar_largura_coluna_procedimento(procedimento):
-            largura_procedimento = len(procedimento) * 10  # Multiplica o comprimento por 10 para ajustar dinamicamente
+            largura_procedimento = len(procedimento) * 10
             self.fiscal_results_tree.column("Procedimento", width=largura_procedimento)
 
-        # Acumular os dados de todos os fiscais
         fiscal_data = {}
         for fiscal in usuarios_comuns:
             table_name = f'procedimentos_{fiscal}'
@@ -1461,6 +1458,7 @@ class App:
             grupos_dict[grupo].append(procedimento)
 
         procedimentos_agrupados = set()
+        row_index = 0  # Para alternância de cores
 
         for grupo, procedimentos in grupos_dict.items():
             meta_cfc_total = 0
@@ -1479,52 +1477,49 @@ class App:
                     quantidade_user = fiscal_data.get(procedimento, {}).get(user, 0)
                     fiscal_realizado_por_grupo[user] += quantidade_user * peso
 
-                # Soma o valor realizado de todos os fiscais
                 quantidade_acumulada = sum(fiscal_data.get(procedimento, {}).values()) * peso
                 realizado_total += quantidade_acumulada
                 procedimentos_agrupados.add(procedimento)
 
             a_realizar = meta_crc_total - realizado_total
-            a_realizar_cfc = meta_cfc_total - realizado_total  # Calcular 'A Realizar CFC'
+            a_realizar_cfc = meta_cfc_total - realizado_total
 
             ajustar_largura_coluna_procedimento(grupo)
 
-            # Criar a linha do grupo
             row_values = [grupo, meta_cfc_total, meta_crc_total]
             for user in usuarios_comuns:
                 row_values.append(fiscal_realizado_por_grupo[user])
-            row_values.append(realizado_total)  # Soma de todos os fiscais para o grupo
+            row_values.append(realizado_total)
             row_values.append(a_realizar)
-            row_values.append(a_realizar_cfc)  # Adiciona 'A Realizar CFC'
+            row_values.append(a_realizar_cfc)
 
-            grupo_id = self.fiscal_results_tree.insert("", "end", values=row_values, open=False)
+            # Alterna as tags entre 'odd' e 'even'
+            tag = 'odd' if row_index % 2 == 0 else 'even'
+            grupo_id = self.fiscal_results_tree.insert("", "end", values=row_values, open=False, tags=(tag,))
+            row_index += 1
 
-            # Exibir os procedimentos individuais dentro do grupo
             for proc in procedimentos:
                 realizado_proc_total = sum(fiscal_data.get(proc, {}).values()) * self.procedure_weights.get(proc, 1)
 
-                # Preencher a linha de cada procedimento no grupo
                 row_values_proc = [
-                    f"  {proc}",  # Identação para indicar que faz parte do grupo
-                    "-",  # Meta Anual CFC não é relevante no nível do procedimento
-                    "-",  # 30% CRCDF não é relevante no nível do procedimento
+                    f"  {proc}", "-", "-",  # Identação para indicar que faz parte do grupo
                 ]
 
-                # Inserir as quantidades de cada usuário comum para o procedimento
                 for user in usuarios_comuns:
                     quantidade_fiscal = fiscal_data.get(proc, {}).get(user, 0) * self.procedure_weights.get(proc, 1)
                     row_values_proc.append(quantidade_fiscal)
 
-                row_values_proc.append(realizado_proc_total)  # Total Realizado do procedimento
-                row_values_proc.append("-")  # A Realizar não é relevante no nível do procedimento
-                row_values_proc.append("-")  # A Realizar CFC não é relevante no nível do procedimento
+                row_values_proc.append(realizado_proc_total)
+                row_values_proc.append("-")
+                row_values_proc.append("-")
 
                 ajustar_largura_coluna_procedimento(proc)
 
-                # Inserir a linha do procedimento dentro do grupo
-                self.fiscal_results_tree.insert(grupo_id, "end", values=row_values_proc, tags=("subitem",))
+                # Alterna as tags para linhas de subitens
+                tag = 'odd' if row_index % 2 == 0 else 'even'
+                self.fiscal_results_tree.insert(grupo_id, "end", values=row_values_proc, tags=(tag,))
+                row_index += 1
 
-        # Exibir os procedimentos não agrupados
         for procedure in self.procedure_weights.keys():
             if procedure not in procedimentos_agrupados:
                 quantidade_individual = fiscal_data.get(procedure, {}).get(self.current_fiscal, 0)
@@ -1535,18 +1530,21 @@ class App:
                 quantidade_acumulada = sum(fiscal_data.get(procedure, {}).values())
                 realizado_acumulado = quantidade_acumulada * peso
                 a_realizar = crcdf_30 - realizado_acumulado
-                a_realizar_cfc = meta_anual_cfc - realizado_acumulado  # Calcular 'A Realizar CFC'
+                a_realizar_cfc = meta_anual_cfc - realizado_acumulado
 
                 row_values = [procedure, meta_anual_cfc, crcdf_30]
                 for user in usuarios_comuns:
                     row_values.append(fiscal_data.get(procedure, {}).get(user, 0) * peso)
-                row_values.append(realizado_acumulado)  # Soma de todos os fiscais para o procedimento
+                row_values.append(realizado_acumulado)
                 row_values.append(a_realizar)
-                row_values.append(a_realizar_cfc)  # Adiciona 'A Realizar CFC'
+                row_values.append(a_realizar_cfc)
 
                 ajustar_largura_coluna_procedimento(procedure)
 
-                self.fiscal_results_tree.insert("", "end", values=row_values)
+                # Alterna as tags para linhas não agrupadas
+                tag = 'odd' if row_index % 2 == 0 else 'even'
+                self.fiscal_results_tree.insert("", "end", values=row_values, tags=(tag,))
+                row_index += 1
 
         self.fiscal_results_tree.bind("<Double-1>", self.toggle_group)
 
