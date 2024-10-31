@@ -1035,24 +1035,14 @@ class App:
                                                                                                 "excel"))
             export_monthly_excel_button.pack(pady=5)
 
-        # Atualizar a combobox logo após o login, removendo o nome do administrador
-        if self.is_admin:
-            usuarios_comuns = [f for f in self.fiscais if f != fiscal_name]
-            self.fiscal_select_combobox['values'] = ["Geral"] + usuarios_comuns
-            self.fiscal_select_combobox.set("Geral")  # Define "Geral" como valor padrão
-        else:
-            self.fiscal_select_combobox['values'] = self.fiscais
+        # Atualizar a combobox de fiscais para todos os usuários
+        self.fiscal_select_combobox['values'] = ["Geral"] + [f for f in self.fiscais if f != fiscal_name]
+        self.fiscal_select_combobox.set("Geral")  # Define "Geral" como valor padrão
+        self.fiscal_select_combobox.pack(pady=5)
+        self.load_fiscal_results_button.pack(pady=5)
 
-        # Mostrar ou ocultar a combobox e o botão de seleção de fiscal para o administrador
-        if self.is_admin:
-            self.fiscal_select_combobox.pack(pady=5)
-            self.load_fiscal_results_button.pack(pady=5)
-        else:
-            self.fiscal_select_combobox.pack_forget()  # Oculta a combobox para usuários comuns
-            self.load_fiscal_results_button.pack_forget()  # Oculta o botão para usuários comuns
-
-        # Chama a função para criar a combobox na aba Resultado Mensal, se for administrador
-            self.create_admin_combobox_for_monthly_results()
+        # Chamar a função para criar a combobox na aba "Resultado Mensal" para todos os usuários
+        self.create_admin_combobox_for_monthly_results()
 
         # Abrir o arquivo Excel
         file_path = filedialog.askopenfilename(filetypes=[("Excel files", "*.xlsx")])
@@ -1370,26 +1360,23 @@ class App:
 
         cursor = self.conn.cursor()
 
-        # Verificar se o "Geral" foi selecionado ou o administrador
-        if self.is_admin and (fiscal_selecionado == "Geral" or fiscal_selecionado == self.current_fiscal):
-            cursor.execute("SELECT name FROM fiscals WHERE is_admin=0")
-            usuarios_comuns = [row[0] for row in cursor.fetchall()]
-        else:
-            if fiscal_selecionado:
-                usuarios_comuns = [fiscal_selecionado]
-            else:
+        # Verificar os usuários comuns, excluindo o administrador
+        if self.is_admin:
+            # Para administradores, permite carregar dados de "Geral" ou fiscais específicos
+            if fiscal_selecionado == "Geral" or fiscal_selecionado == self.current_fiscal:
                 cursor.execute("SELECT name FROM fiscals WHERE is_admin=0")
                 usuarios_comuns = [row[0] for row in cursor.fetchall()]
-                if not self.is_admin and self.current_fiscal in usuarios_comuns:
-                    usuarios_comuns.remove(self.current_fiscal)
-
-                if not self.is_admin:
-                    usuarios_comuns.append(self.current_fiscal)
+            else:
+                usuarios_comuns = [fiscal_selecionado] if fiscal_selecionado else []
+        else:
+            # Para usuários comuns, carrega os fiscais sem incluir o administrador
+            cursor.execute("SELECT name FROM fiscals WHERE is_admin=0 AND name != ?", (self.current_fiscal,))
+            usuarios_comuns = [row[0] for row in cursor.fetchall()]
+            usuarios_comuns.append(self.current_fiscal)  # Inclui o próprio fiscal logado para ver seus próprios dados
 
         # Definir a ordem das colunas
         colunas = ['Procedimento', 'Meta Anual CFC', 'Meta+ % CRCDF'] + usuarios_comuns + ['Realizado', 'A Realizar',
                                                                                            'A Realizar CFC']
-
         self.fiscal_results_tree["columns"] = colunas
 
         # Definir o cabeçalho das colunas
@@ -1727,6 +1714,19 @@ class App:
         df = pd.DataFrame(data, columns=columns)
         df.to_excel(filename, index=False)
         messagebox.showinfo("Exportação Completa", f"Dados exportados para {filename}")
+
+    def search_in_report(self):
+        """Busca por um termo na Treeview da aba Relatório."""
+        search_term = self.search_entry.get().lower()
+
+        # Limpa a Treeview antes de exibir os resultados da busca
+        self.results_tree.delete(*self.results_tree.get_children())
+
+        # Filtra as linhas que contêm o termo buscado
+        for item in self.filtered_df.itertuples(index=False):
+            if any(search_term in str(value).lower() for value in item):
+                self.results_tree.insert("", "end", values=item)
+    
 
     def save_to_database(self, row, fiscal_destinatario):
         """Salva os dados na tabela de procedimentos do fiscal destinatário no banco de dados"""
