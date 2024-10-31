@@ -44,6 +44,8 @@ class App:
         self.fiscais = self.load_fiscais()  # Carrega fiscais do banco de dados
         self.current_fiscal = None  # Variável para armazenar o fiscal logado
         self.is_admin = None
+        # Lista para armazenar os itens originais da Treeview "Relatório"
+        self.original_tree_items = []
         # Tela de Login
         self.login_frame = tk.Frame(self.root)
         self.login_frame.grid(row=0, column=0, sticky='nsew', padx=10, pady=10)
@@ -98,6 +100,12 @@ class App:
         self.resultado_mensal_frame = ttk.Frame(self.notebook)
         self.notebook.add(self.resultado_mensal_frame, text="Resultado Mensal")
 
+        self.search_var = tk.StringVar()  # Variável que armazena o texto de busca
+        tk.Label(self.results_frame, text="Buscar:").pack(side=tk.TOP, padx=10, pady=5, anchor="w")
+        self.search_entry = tk.Entry(self.results_frame, textvariable=self.search_var)
+        self.search_entry.pack(side=tk.TOP, fill=tk.X, padx=10, pady=5)
+        self.search_entry.bind("<KeyRelease>", self.update_report_search)
+
         #Mensal
 
         # Configurar a Treeview para exibir os resultados mensais
@@ -145,6 +153,16 @@ class App:
         self.data_tree.configure(xscrollcommand=self.data_tree_scrollbar_x.set, yscrollcommand=self.data_tree_scrollbar_y.set)
 
         self.data_tree.bind("<ButtonRelease-1>", self.select_row)
+
+        if self.is_admin:
+            # Botões de exportação para a aba "Relatório"
+            self.export_report_pdf_button = tk.Button(self.results_frame, text="Exportar Filtrado para PDF",
+                                                      command=self.export_filtered_pdf)
+            self.export_report_pdf_button.pack(pady=5)
+
+            self.export_report_excel_button = tk.Button(self.results_frame, text="Exportar Filtrado para Excel",
+                                                        command=self.export_filtered_excel)
+            self.export_report_excel_button.pack(pady=5)
 
         # Configuração de responsividade
         self.root.grid_rowconfigure(1, weight=1)
@@ -1014,12 +1032,13 @@ class App:
 
         # Adicionar botões de exportação apenas para administradores
         if self.is_admin:
-            # Botões de exportação para a aba "Resultados Do Fiscal"
+            # Botão para exportar o conteúdo filtrado para PDF
             export_fiscal_pdf_button = tk.Button(self.fiscal_results_frame, text="Exportar para PDF",
                                                  command=lambda: self.export_fiscal_results(self.fiscal_results_tree,
                                                                                             "pdf"))
             export_fiscal_pdf_button.pack(pady=5)
 
+            # Botão para exportar o conteúdo filtrado para Excel
             export_fiscal_excel_button = tk.Button(self.fiscal_results_frame, text="Exportar para Excel",
                                                    command=lambda: self.export_fiscal_results(self.fiscal_results_tree,
                                                                                               "excel"))
@@ -1034,6 +1053,16 @@ class App:
                                                     command=lambda: self.export_monthly_results(self.monthly_tree,
                                                                                                 "excel"))
             export_monthly_excel_button.pack(pady=5)
+
+        if self.is_admin:
+            # Botões de exportação para a aba "Relatório"
+            self.export_report_pdf_button = tk.Button(self.results_frame, text="Exportar Filtrado para PDF",
+                                                      command=self.export_filtered_pdf)
+            self.export_report_pdf_button.pack(pady=5)
+
+            self.export_report_excel_button = tk.Button(self.results_frame, text="Exportar Filtrado para Excel",
+                                                        command=self.export_filtered_excel)
+            self.export_report_excel_button.pack(pady=5)
 
         # Atualizar a combobox de fiscais para todos os usuários
         self.fiscal_select_combobox['values'] = ["Geral"] + [f for f in self.fiscais if f != fiscal_name]
@@ -1223,12 +1252,13 @@ class App:
         tree.tag_configure('even', background='#dcdcdc')
 
     def load_results(self):
-        """Carrega os dados da tabela do fiscal logado ou de todos os fiscais na aba Relatório, evitando duplicações."""
+        """Carrega os dados na Treeview da aba 'Relatório', evitando duplicações, e armazena-os em uma lista para busca."""
         if not self.current_fiscal:
             return
 
         # Limpa a Treeview da aba Relatório antes de carregar novos dados
         self.results_tree.delete(*self.results_tree.get_children())
+        self.original_tree_items = []  # Limpa a lista de itens originais para armazenar os novos dados
 
         cursor = self.conn.cursor()
         row_color_1 = "#f0f0f0"
@@ -1237,6 +1267,7 @@ class App:
         # Conjunto para rastrear duplicatas
         procedimentos_carregados = set()
 
+        # Carrega os dados com base no tipo de usuário
         if self.is_admin:
             # Carrega os dados de todos os fiscais se o usuário for administrador
             all_procedures = []
@@ -1282,6 +1313,9 @@ class App:
                 self.results_tree.insert("", "end", values=formatted_row + [resultado], tags=('row',))
                 self.results_tree.tag_configure('row', background=row_color)
 
+                # Armazena o item original para busca
+                self.original_tree_items.append(formatted_row + [resultado])
+
         else:
             # Carregar apenas os dados do fiscal logado
             table_name = f'procedimentos_{self.current_fiscal}'
@@ -1318,6 +1352,9 @@ class App:
                     row_color = row_color_1 if index % 2 == 0 else row_color_2
                     self.results_tree.insert("", "end", values=formatted_row + [resultado], tags=('row',))
                     self.results_tree.tag_configure('row', background=row_color)
+
+                    # Armazena o item original para busca
+                    self.original_tree_items.append(formatted_row + [resultado])
 
     def load_all_procedures_for_admin(self):
         """Carrega os procedimentos de todos os fiscais e os insere na variável self.filtered_df"""
@@ -1578,57 +1615,55 @@ class App:
         # Capturar todos os dados visíveis na Treeview "Resultados Do Fiscal"
         data = [tree.item(item)["values"] for item in tree.get_children()]
 
-        # Adicionar o nome do usuário em cada linha de dados
-        user_column = [self.fiscal_select_combobox.get()] * len(data)  # Coluna com o nome do fiscal selecionado
-        data_with_user = [[user_column[i]] + row for i, row in enumerate(data)]
-
         # Verificar se há dados para exportar
-        if not data_with_user:
+        if not data:
             messagebox.showwarning("Aviso", "Não há dados para exportar.")
             return
 
-        # Remover a coluna "Usuário" para exportação no Excel
-        data_without_user = [row[1:] for row in data_with_user]  # Remove a primeira coluna
-
-        # Definir as colunas para o Excel (sem a coluna "Usuário")
-        columns = ["Procedimento", "Meta Anual CFC", "Meta+ % CRCDF", "MFA", "Realizado", "A Realizar",
-                   "A Realizar CFC"]
+        # Obter colunas dinâmicas da Treeview, incluindo os nomes dos usuários
+        columns = [tree.heading(col)["text"] for col in tree["columns"]]
 
         # Confirmar o tipo de exportação e chamar a função correta
         if export_type == "pdf":
-            self.export_to_pdf(data_with_user, "Resultados Do Fiscal")
+            self.export_fiscal_to_pdf(data, columns)
         elif export_type == "excel":
-            self.export_to_excel(data_without_user, columns, "Resultados Do Fiscal")
+            self.export_fiscal_to_excel(data, columns)
 
-    def export_to_excel(self, data, columns, title):
+    def export_fiscal_to_excel(self, data, columns):
         # Caminho para salvar o arquivo Excel
         filename = filedialog.asksaveasfilename(defaultextension=".xlsx", filetypes=[("Excel files", "*.xlsx")])
         if not filename:
             return
 
-        # Exportar para Excel usando pandas
+        # Exportar diretamente para Excel usando pandas
+        import pandas as pd
         df = pd.DataFrame(data, columns=columns)
-        df.to_excel(filename, index=False, sheet_name=title)
+        df.to_excel(filename, index=False, sheet_name="Resultados Do Fiscal")
+
         messagebox.showinfo("Exportação Completa", f"Dados exportados para {filename}")
 
-    def export_to_pdf(self, data, report_title):
+    def export_fiscal_to_pdf(self, data, columns):
         # Caminho para salvar o PDF
         filename = filedialog.asksaveasfilename(defaultextension=".pdf", filetypes=[("PDF files", "*.pdf")])
         if not filename:
             return
 
         # Configuração do documento PDF
+        from reportlab.lib.pagesizes import landscape, A4
+        from reportlab.platypus import SimpleDocTemplate, Table, TableStyle
+        from reportlab.lib import colors
+        from reportlab.platypus import Paragraph
+        from reportlab.lib.styles import getSampleStyleSheet
+
         pdf = SimpleDocTemplate(filename, pagesize=landscape(A4), leftMargin=20, rightMargin=20, topMargin=20,
                                 bottomMargin=20)
         styles = getSampleStyleSheet()
         style_normal = styles['Normal']
         style_normal.fontSize = 8
 
-        # Configuração dos cabeçalhos e dados (sem a coluna "Usuário")
-        columns = ["Procedimento", "Meta Anual CFC", "Meta+ % CRCDF", "MFA", "Realizado", "A Realizar",
-                   "A Realizar CFC"]
-        formatted_data = [[Paragraph(str(value), style_normal) for value in row[1:]] for row in data]
-        formatted_data.insert(0, [Paragraph(col, styles['Heading4']) for col in columns])
+        # Preparar os dados com cabeçalhos para exportação
+        formatted_data = [[Paragraph(col, styles['Heading4']) for col in columns]]  # Cabeçalhos
+        formatted_data += [[Paragraph(str(value), style_normal) for value in row] for row in data]  # Dados
 
         # Configuração da tabela no PDF
         table = Table(formatted_data)
@@ -1726,7 +1761,119 @@ class App:
         for item in self.filtered_df.itertuples(index=False):
             if any(search_term in str(value).lower() for value in item):
                 self.results_tree.insert("", "end", values=item)
-    
+
+    def update_report_search(self, event=None):
+        """Filtra os itens da Treeview 'results_tree' na aba 'Relatório' com base no campo de busca.
+           Se o campo de busca estiver vazio, restaura todos os itens originais."""
+        search_term = self.search_var.get().lower()
+
+        # Limpar os itens atuais da Treeview
+        self.results_tree.delete(*self.results_tree.get_children())
+
+        # Verifica se o campo de busca está vazio
+        if not search_term:
+            # Se o campo está vazio, insere todos os itens originais
+            for values in self.original_tree_items:
+                self.results_tree.insert("", "end", values=values)
+        else:
+            # Filtra e adiciona apenas os itens que correspondem ao termo de busca
+            for values in self.original_tree_items:
+                if any(search_term in str(value).lower() for value in values):
+                    self.results_tree.insert("", "end", values=values)
+
+    def export_filtered_report(self, export_type):
+        # Obter os dados filtrados da Treeview
+        data = [self.results_tree.item(item)["values"] for item in self.results_tree.get_children()]
+
+        # Verificar se há dados para exportar
+        if not data:
+            messagebox.showwarning("Aviso", "Não há dados para exportar.")
+            return
+
+        # Exportar conforme o tipo especificado
+        if export_type == "pdf":
+            self.export_to_pdf(data, "Relatório Filtrado")
+        elif export_type == "excel":
+            self.export_to_excel(data,
+                                 ["Coluna1", "Coluna2", "Coluna3", "Coluna4", "Coluna5", "Coluna6", "Procedimento",
+                                  "Quantidade", "Resultado"], "Relatório Filtrado")
+
+    def export_filtered_excel(self):
+        # Obter os dados filtrados da Treeview e manter apenas as colunas necessárias
+        data = [self.results_tree.item(item)["values"][:-1] for item in self.results_tree.get_children()]
+
+        # Verificar se há dados para exportar
+        if not data:
+            messagebox.showwarning("Aviso", "Não há dados para exportar.")
+            return
+
+        # Obter nomes das colunas da Treeview e remover a última coluna, se necessário
+        columns = [self.results_tree.heading(col)["text"] for col in self.results_tree["columns"][:-1]]
+        columns.append("Quantidade")  # Define o nome da última coluna como "Quantidade"
+
+        # Caminho para salvar o arquivo Excel
+        filename = filedialog.asksaveasfilename(defaultextension=".xlsx", filetypes=[("Excel files", "*.xlsx")])
+        if not filename:
+            return
+
+        # Exportar diretamente para Excel usando pandas
+        import pandas as pd
+        df = pd.DataFrame(data, columns=columns)
+        df.to_excel(filename, index=False, sheet_name="Relatório Filtrado")
+
+        messagebox.showinfo("Exportação Completa", f"Dados exportados para {filename}")
+
+    def export_filtered_pdf(self):
+        # Obter os dados filtrados da Treeview e manter apenas as colunas necessárias
+        data = [self.results_tree.item(item)["values"][:-1] for item in self.results_tree.get_children()]
+
+        # Verificar se há dados para exportar
+        if not data:
+            messagebox.showwarning("Aviso", "Não há dados para exportar.")
+            return
+
+        # Obter nomes das colunas da Treeview, removendo qualquer coluna extra
+        columns = [self.results_tree.heading(col)["text"] for col in self.results_tree["columns"][:-1]]
+        columns.append("Quantidade")  # Define o nome da última coluna como "Quantidade"
+
+        # Caminho para salvar o PDF
+        filename = filedialog.asksaveasfilename(defaultextension=".pdf", filetypes=[("PDF files", "*.pdf")])
+        if not filename:
+            return
+
+        # Configuração do documento PDF
+        from reportlab.lib.pagesizes import landscape, A4
+        from reportlab.platypus import SimpleDocTemplate, Table, TableStyle
+        from reportlab.lib import colors
+        from reportlab.platypus import Paragraph
+        from reportlab.lib.styles import getSampleStyleSheet
+
+        pdf = SimpleDocTemplate(filename, pagesize=landscape(A4), leftMargin=20, rightMargin=20, topMargin=20,
+                                bottomMargin=20)
+        styles = getSampleStyleSheet()
+        style_normal = styles['Normal']
+        style_normal.fontSize = 8
+
+        # Preparar os dados com cabeçalhos para exportação
+        formatted_data = [[Paragraph(col, styles['Heading4']) for col in columns]]  # Cabeçalhos
+        formatted_data += [[Paragraph(str(value), style_normal) for value in row] for row in data]  # Dados
+
+        # Configuração da tabela no PDF
+        table = Table(formatted_data)
+        table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, -1), 8),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
+            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.whitesmoke, colors.lightgrey]),
+        ]))
+
+        # Criar o PDF
+        pdf.build([table])
+        messagebox.showinfo("Exportação Completa", f"Dados exportados para {filename}")
 
     def save_to_database(self, row, fiscal_destinatario):
         """Salva os dados na tabela de procedimentos do fiscal destinatário no banco de dados"""
