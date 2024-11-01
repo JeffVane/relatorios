@@ -154,16 +154,6 @@ class App:
 
         self.data_tree.bind("<ButtonRelease-1>", self.select_row)
 
-        if self.is_admin:
-            # Botões de exportação para a aba "Relatório"
-            self.export_report_pdf_button = tk.Button(self.results_frame, text="Exportar Filtrado para PDF",
-                                                      command=self.export_filtered_pdf)
-            self.export_report_pdf_button.pack(pady=5)
-
-            self.export_report_excel_button = tk.Button(self.results_frame, text="Exportar Filtrado para Excel",
-                                                        command=self.export_filtered_excel)
-            self.export_report_excel_button.pack(pady=5)
-
         # Configuração de responsividade
         self.root.grid_rowconfigure(1, weight=1)
         self.root.grid_columnconfigure(0, weight=1)
@@ -246,10 +236,7 @@ class App:
         # Oculta a combobox logo após sua criação
         self.fiscal_select_combobox.pack_forget()
 
-        # Botão para carregar os resultados do fiscal selecionado
-        self.load_fiscal_results_button = tk.Button(self.fiscal_results_frame, text="Atualizar Resultados",
-                                                    command=self.load_fiscal_results_for_admin)
-        self.load_fiscal_results_button.pack(pady=5)
+
         self.fiscal_select_combobox.pack_forget()
         # Configuração da Treeview de Resultados
         self.results_tree = ttk.Treeview(self.results_frame, show='headings')
@@ -809,6 +796,7 @@ class App:
 
                 # Agora chame a função que salva os valores no banco de dados
                 self.save_admin_metas()
+                self.load_fiscal_results_for_admin()
 
             # Botão para salvar as edições
             save_button = tk.Button(edit_window, text="Salvar", command=save_edited_values)
@@ -932,6 +920,7 @@ class App:
 
         self.conn.commit()
         messagebox.showinfo("Sucesso", "Metas de grupo atualizadas com sucesso!")
+        self.load_fiscal_results_for_admin()
 
     def save_general_metas(self):
         """Salva os valores de Meta Anual CFC e META+ % CRCDF para todos os fiscais"""
@@ -1039,45 +1028,85 @@ class App:
         # Define se o usuário logado é administrador
         self.is_admin = is_admin == 1
 
+        # Botão para carregar os resultados do fiscal selecionado
+        self.load_fiscal_results_button = tk.Button(self.fiscal_results_frame, text="Atualizar Resultados",
+                                                    command=self.load_fiscal_results_for_admin)
+        self.load_fiscal_results_button.pack(side="left", padx=5, pady=5)
+
         # Adicionar botões de exportação apenas para administradores
         if self.is_admin:
-            # Botão para exportar o conteúdo filtrado para PDF
-            export_fiscal_pdf_button = tk.Button(self.fiscal_results_frame, text="Exportar para PDF",
-                                                 command=lambda: self.export_fiscal_results(self.fiscal_results_tree,
-                                                                                            "pdf"))
-            export_fiscal_pdf_button.pack(pady=5)
+            # Frame para organizar os botões de exportação na aba "Resultado Mensal"
+            export_monthly_frame = tk.Frame(self.resultado_mensal_frame)
+            export_monthly_frame.pack(pady=5)
 
-            # Botão para exportar o conteúdo filtrado para Excel
-            export_fiscal_excel_button = tk.Button(self.fiscal_results_frame, text="Exportar para Excel",
-                                                   command=lambda: self.export_fiscal_results(self.fiscal_results_tree,
-                                                                                              "excel"))
-            export_fiscal_excel_button.pack(pady=5)
+            # Botão para exportar o conteúdo para PDF na aba Resultado Mensal
+            export_monthly_pdf_button = tk.Button(export_monthly_frame, text="Exportar para PDF",
+                                                  command=lambda: self.export_monthly_results(self.monthly_tree, "pdf"),
+                                                  bg="light blue", fg="black")
+            export_monthly_pdf_button.pack(side="left", padx=5)
 
-            # Botões de exportação para a aba "Resultado Mensal"
-            export_monthly_pdf_button = tk.Button(self.resultado_mensal_frame, text="Exportar para PDF",
-                                                  command=lambda: self.export_monthly_results(self.monthly_tree, "pdf"))
-            export_monthly_pdf_button.pack(pady=5)
-
-            export_monthly_excel_button = tk.Button(self.resultado_mensal_frame, text="Exportar para Excel",
+            # Botão para exportar o conteúdo para Excel na aba Resultado Mensal
+            export_monthly_excel_button = tk.Button(export_monthly_frame, text="Exportar para Excel",
                                                     command=lambda: self.export_monthly_results(self.monthly_tree,
-                                                                                                "excel"))
-            export_monthly_excel_button.pack(pady=5)
+                                                                                                "excel"),
+                                                    bg="light green", fg="black")
+            export_monthly_excel_button.pack(side="left", padx=5)
 
-        if self.is_admin:
-            # Botões de exportação para a aba "Relatório"
-            self.export_report_pdf_button = tk.Button(self.results_frame, text="Exportar Filtrado para PDF",
-                                                      command=self.export_filtered_pdf)
-            self.export_report_pdf_button.pack(pady=5)
+            # Frame para organizar os botões de exportação na aba "Relatório"
+            export_report_frame = tk.Frame(self.results_frame)
+            export_report_frame.pack(pady=5,padx=30)
 
-            self.export_report_excel_button = tk.Button(self.results_frame, text="Exportar Filtrado para Excel",
-                                                        command=self.export_filtered_excel)
-            self.export_report_excel_button.pack(pady=5)
+            # Botão para exportar o conteúdo filtrado para PDF na aba Relatório
+            self.export_report_pdf_button = tk.Button(export_report_frame, text="Exportar Filtrado para PDF",
+                                                      command=self.export_filtered_pdf, bg="light blue", fg="black")
+            self.export_report_pdf_button.pack(side="left", padx=5)
+
+            # Botão para exportar o conteúdo filtrado para Excel na aba Relatório
+            self.export_report_excel_button = tk.Button(export_report_frame, text="Exportar Filtrado para Excel",
+                                                        command=self.export_filtered_excel, bg="light green",
+                                                        fg="black")
+            self.export_report_excel_button.pack(side="left", padx=5)
+
+            # Frame para organizar os botões de exportação na aba 'Resultados do Fiscal'
+            export_fiscal_frame = tk.Frame(self.fiscal_results_frame)
+            export_fiscal_frame.pack(pady=5,padx=30)
+
+            # Botão para exportar o conteúdo filtrado para PDF na aba Resultados Do Fiscal
+            export_fiscal_pdf_button = tk.Button(export_fiscal_frame, text="Exportar para PDF",
+                                                 command=lambda: self.export_fiscal_results(self.fiscal_results_tree,
+                                                                                            "pdf"),
+                                                 bg="light blue", fg="black")
+            export_fiscal_pdf_button.pack(side="left", padx=5)
+
+            # Botão para exportar o conteúdo filtrado para Excel na aba Resultados Do Fiscal
+            export_fiscal_excel_button = tk.Button(export_fiscal_frame, text="Exportar para Excel",
+                                                   command=lambda: self.export_fiscal_results(self.fiscal_results_tree,
+                                                                                              "excel"),
+                                                   bg="light green", fg="black")
+            export_fiscal_excel_button.pack(side="left", padx=5)
+
+            # Frame para organizar os botões "Agrupar" e "Desagrupar" na aba Resultados do Fiscal
+            group_buttons_frame = tk.Frame(self.fiscal_results_frame)
+            group_buttons_frame.pack(pady=5)
+
+            # Botão Agrupar na aba Resultados Do Fiscal
+            self.agrupar_button = tk.Button(group_buttons_frame, text="Agrupar", command=self.abrir_janela_agrupar,
+                                            bg="light coral", fg="white")
+            self.agrupar_button.pack(side="left", padx=5)
+
+            # Botão Desagrupar na aba Resultados Do Fiscal
+            self.desagrupar_button = tk.Button(group_buttons_frame, text="Desagrupar",
+                                               command=self.desagrupar_procedimentos,
+                                               bg="light slate gray", fg="white")
+            self.desagrupar_button.pack(side="left", padx=5)
 
         # Atualizar a combobox de fiscais para todos os usuários
         self.fiscal_select_combobox['values'] = ["Geral"] + [f for f in self.fiscais if f != fiscal_name]
         self.fiscal_select_combobox.set("Geral")  # Define "Geral" como valor padrão
         self.fiscal_select_combobox.pack(pady=5)
         self.load_fiscal_results_button.pack(pady=5)
+
+
 
         # Chamar a função para criar a combobox na aba "Resultado Mensal" para todos os usuários
         self.create_admin_combobox_for_monthly_results()
@@ -1154,17 +1183,6 @@ class App:
         self.load_fiscal_results()  # Executa o cálculo automaticamente para a aba Resultados do Fiscal
         self.load_fiscal_results_for_admin()
 
-        # **Adicionar os botões "Agrupar" e "Desagrupar" na aba Resultados do Fiscal apenas para administradores**
-        if self.is_admin:
-            # Botão Agrupar
-            self.agrupar_button = tk.Button(self.fiscal_results_frame, text="Agrupar",
-                                            command=self.abrir_janela_agrupar)
-            self.agrupar_button.pack(pady=5)
-
-            # Botão Desagrupar
-            self.desagrupar_button = tk.Button(self.fiscal_results_frame, text="Desagrupar",
-                                               command=self.desagrupar_procedimentos)
-            self.desagrupar_button.pack(pady=5)
 
         # Informar o tipo de usuário logado
         if self.is_admin:
@@ -1173,6 +1191,7 @@ class App:
             messagebox.showinfo("Usuário", "Você está logado como usuário.")
             # Exemplo de uso para carregar dados com alternância de cor
             self.update_treeview(self.data_tree, self.filtered_df)
+            self.load_fiscal_results_for_admin()
 
 
     def load_attribuir_data(self):
