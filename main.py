@@ -256,12 +256,17 @@ class App:
         self.results_tree.pack(fill=tk.BOTH, expand=True)
 
         # Configurar as colunas da Treeview de resultados para 7 colunas (6 da linha + 1 do procedimento)
-        self.results_tree["columns"] = ['Data Agendada', 'Número Agendamento', 'Fiscal', 'Tipo Registro', 'Número Registro', 'Nome',
-                                        'Procedimento Atribuído','Quantidade']
+        self.results_tree["columns"] = ['Data Agendada', 'Número Agendamento', 'Fiscal', 'Tipo Registro',
+                                        'Número Registro', 'Nome',
+                                        'Procedimento Atribuído', 'Quantidade']
         for col in self.results_tree["columns"]:
             self.results_tree.heading(col, text=col)  # Define os cabeçalhos
-            self.results_tree.column(col, anchor="center")  # Centraliza as colunas
-            self.load_default_procedures()  # Carrega os procedimentos padrão
+            if col == "Procedimento Atribuído":
+                self.results_tree.column(col, anchor="center", width=600)  # Define a largura inicial para a coluna
+            if col == "Nome":
+                self.results_tree.column(col, anchor="center", width=800)  # Define a largura inicial para a coluna
+            else:
+                self.results_tree.column(col, anchor="center")
 
         self.default_procedures = [
         "DECORES (POR DECLARAÇÃO)",
@@ -687,14 +692,18 @@ class App:
         self.monthly_tree["columns"] = colunas
 
         # Ajustar a largura de cada coluna
-        self.monthly_tree.column("Procedimento", width=850, anchor="center")  # Largura para "Procedimento"
+        self.monthly_tree.column("Procedimento", width=850)  # Largura para "Procedimento"
         for mes in meses:
             self.monthly_tree.column(mes, width=65, anchor="center")  # Largura reduzida para meses
         self.monthly_tree.column("Total Realizado", width=130, anchor="center")  # Maior largura para "Total Realizado"
 
-        for col in colunas:
+        for index, col in enumerate(colunas):
             self.monthly_tree.heading(col, text=col)
-            self.monthly_tree.column(col, anchor="center")
+
+            if index == 0:
+                self.monthly_tree.heading(col, anchor="w")
+            else:
+                self.monthly_tree.column(col, anchor="center")
 
         # Definir estilos de cores alternadas
         self.monthly_tree.tag_configure('odd', background="#f0f0f0")
@@ -1165,6 +1174,7 @@ class App:
             # Exemplo de uso para carregar dados com alternância de cor
             self.update_treeview(self.data_tree, self.filtered_df)
 
+
     def load_attribuir_data(self):
         """Carrega os dados na aba 'Atribuir', ocultando agendamentos já atribuídos nas tabelas de procedimentos de cada usuário."""
 
@@ -1224,6 +1234,8 @@ class App:
         # Retorna como DataFrame
         return pd.DataFrame(existing_rows,
                             columns=['coluna_1', 'coluna_2', 'coluna_3', 'coluna_4', 'coluna_5', 'coluna_6'])
+
+
 
     def update_treeview(self, tree, df):
         tree.delete(*tree.get_children())
@@ -1417,9 +1429,14 @@ class App:
                                                                                            'A Realizar CFC']
         self.fiscal_results_tree["columns"] = colunas
 
-        for col in colunas:
+        # Define o alinhamento para as colunas
+        for index, col in enumerate(colunas):
             self.fiscal_results_tree.heading(col, text=col)
-            self.fiscal_results_tree.column(col, anchor="w")
+            # Define o alinhamento da primeira coluna como à esquerda (w) e as demais como centralizadas (center)
+            if index == 0:
+                self.fiscal_results_tree.column(col, anchor="w")
+            else:
+                self.fiscal_results_tree.column(col, anchor="center")
 
         def ajustar_largura_coluna_procedimento(procedimento):
             largura_procedimento = len(procedimento) * 10
