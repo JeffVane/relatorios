@@ -21,10 +21,13 @@ from reportlab.platypus import Table, TableStyle
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph
 from reportlab.lib.styles import getSampleStyleSheet
 
+
 class App:
     def __init__(self, root):
         self.root = root
         self.root.title("Fiscalização")
+        # Configura o ícone da aplicação
+        self.root.iconbitmap("crc.ico")
 
         # Conexão com o banco de dados SQLite
         self.conn = sqlite3.connect('fiscais.db')
@@ -52,10 +55,9 @@ class App:
         # Conectar stdout ao console para depuração
         sys.stdout = sys.__stdout__  # Garantir que o stdout esteja correto
 
-
-
         # Configuração do estilo para as cores das colunas
         style = ttk.Style()
+        style.theme_use('clam')
         style.configure("Treeview.Heading", foreground="#42648f", font=('Helvetica', 10, 'bold'))
         style.map("Treeview.Heading", foreground=[("active", "#c6b28b")])
 
@@ -65,12 +67,12 @@ class App:
         style.configure("Treeview.odd", background="#f0f0f0")  # Cor cinza claro
         style.configure("Treeview.even", background="#dcdcdc")  # Cinza mais escuro
 
-        tk.Label(self.login_frame, text="Escolha o Fiscal:", font=('Helvetica',15,"bold")).grid(row=0, column=0, sticky='w')
-        self.fiscal_combobox = ttk.Combobox(self.login_frame, values=self.fiscais, state='readonly' )
+        tk.Label(self.login_frame, text="Escolha o Fiscal:", font=('Helvetica', 15, "bold")).grid(row=0, column=0,
+                                                                                                  sticky='w')
+        self.fiscal_combobox = ttk.Combobox(self.login_frame, values=self.fiscais, state='readonly')
         self.fiscal_combobox.grid(row=0, column=1, sticky='ew')
 
         tk.Button(self.login_frame, text="Login", command=self.load_data).grid(row=1, columnspan=2, sticky='ew', pady=5)
-
 
         if self.is_admin:  # Exibe apenas para administradores
             self.redefinir_senha_button = tk.Button(self.root, text="Redefinir Senha", command=self.redefinir_senha)
@@ -99,18 +101,21 @@ class App:
         # Adicione este botão ao layout da aba "Relatório"
         Button(self.results_frame, text="Editar Quantidade", command=self.edit_quantity).pack(pady=5)
 
-        #Mensal
+        # Mensal
 
         # Configurar a Treeview para exibir os resultados mensais
         self.monthly_tree = ttk.Treeview(self.resultado_mensal_frame, columns=("Mês", "Realizado"), show='headings')
         self.monthly_tree.pack(fill=tk.BOTH, expand=True)
 
         # Adicionar barras de rolagem horizontal e vertical para a Treeview de resultados mensais
-        self.monthly_tree_scrollbar_x = ttk.Scrollbar(self.monthly_tree, orient=tk.HORIZONTAL, command=self.monthly_tree.xview)
+        self.monthly_tree_scrollbar_x = ttk.Scrollbar(self.monthly_tree, orient=tk.HORIZONTAL,
+                                                      command=self.monthly_tree.xview)
         self.monthly_tree_scrollbar_x.pack(fill=tk.X, side=tk.BOTTOM)
-        self.monthly_tree_scrollbar_y = ttk.Scrollbar(self.monthly_tree, orient=tk.VERTICAL, command=self.monthly_tree.yview)
+        self.monthly_tree_scrollbar_y = ttk.Scrollbar(self.monthly_tree, orient=tk.VERTICAL,
+                                                      command=self.monthly_tree.yview)
         self.monthly_tree_scrollbar_y.pack(fill=tk.Y, side=tk.RIGHT)
-        self.monthly_tree.configure(xscrollcommand=self.monthly_tree_scrollbar_x.set, yscrollcommand=self.monthly_tree_scrollbar_y.set)
+        self.monthly_tree.configure(xscrollcommand=self.monthly_tree_scrollbar_x.set,
+                                    yscrollcommand=self.monthly_tree_scrollbar_y.set)
 
         self.monthly_tree.heading("Mês", text="Mês")
         self.monthly_tree.heading("Realizado", text="Quantidade Realizada")
@@ -122,13 +127,17 @@ class App:
         self.fiscal_results_tree.pack(fill=tk.BOTH, expand=True)
 
         # Adicionar barras de rolagem horizontal e vertical para a Treeview de resultados do fiscal
-        self.fiscal_results_scrollbar_x = ttk.Scrollbar(self.fiscal_results_tree, orient=tk.HORIZONTAL, command=self.fiscal_results_tree.xview)
+        self.fiscal_results_scrollbar_x = ttk.Scrollbar(self.fiscal_results_tree, orient=tk.HORIZONTAL,
+                                                        command=self.fiscal_results_tree.xview)
         self.fiscal_results_scrollbar_x.pack(fill=tk.X, side=tk.BOTTOM)
-        self.fiscal_results_scrollbar_y = ttk.Scrollbar(self.fiscal_results_tree, orient=tk.VERTICAL, command=self.fiscal_results_tree.yview)
+        self.fiscal_results_scrollbar_y = ttk.Scrollbar(self.fiscal_results_tree, orient=tk.VERTICAL,
+                                                        command=self.fiscal_results_tree.yview)
         self.fiscal_results_scrollbar_y.pack(fill=tk.Y, side=tk.RIGHT)
-        self.fiscal_results_tree.configure(xscrollcommand=self.fiscal_results_scrollbar_x.set, yscrollcommand=self.fiscal_results_scrollbar_y.set)
+        self.fiscal_results_tree.configure(xscrollcommand=self.fiscal_results_scrollbar_x.set,
+                                           yscrollcommand=self.fiscal_results_scrollbar_y.set)
 
-        self.fiscal_results_tree["columns"] = ['Procedimento','Meta Anual CFC', 'Meta+ % CRCDF','Realizado', 'A Realizar',"A Realizar CFC"]
+        self.fiscal_results_tree["columns"] = ['Procedimento', 'Meta Anual CFC', 'Meta+ % CRCDF', 'Realizado',
+                                               'A Realizar', "A Realizar CFC"]
 
         for col in self.fiscal_results_tree["columns"]:
             self.fiscal_results_tree.heading(col, text=col)
@@ -143,17 +152,14 @@ class App:
         self.data_tree_scrollbar_x.pack(fill=tk.X, side=tk.BOTTOM)
         self.data_tree_scrollbar_y = ttk.Scrollbar(self.data_tree, orient=tk.VERTICAL, command=self.data_tree.yview)
         self.data_tree_scrollbar_y.pack(fill=tk.Y, side=tk.RIGHT)
-        self.data_tree.configure(xscrollcommand=self.data_tree_scrollbar_x.set, yscrollcommand=self.data_tree_scrollbar_y.set)
+        self.data_tree.configure(xscrollcommand=self.data_tree_scrollbar_x.set,
+                                 yscrollcommand=self.data_tree_scrollbar_y.set)
 
         self.data_tree.bind("<ButtonRelease-1>", self.select_row)
-
-
 
         # Configuração de responsividade
         self.root.grid_rowconfigure(1, weight=1)
         self.root.grid_columnconfigure(0, weight=1)
-
-
 
         # Dicionário de pesos para cada procedimento
         self.procedure_weights = {
@@ -205,7 +211,8 @@ class App:
             "ENTIDADE FECHADA DE PREVIDÊNCIA COMPLEMENTAR (ANÁLISE DEMONSTRAÇÕES CONTÁBEIS DE ACORDO COM AS NBCS - ITG 2001)",
             "COOPERATIVAS (ANÁLISE DEMONSTRAÇÕES CONTÁBEIS DE ACORDO COM AS NBCS - ITG 2004)",
             "ENTIDADES SEM FINS LUCRATIVOS (ANÁLISE DEMONSTRAÇÕES CONTÁBEIS DE ACORDO COM AS NBCS - ITG 2002)",
-            "REGISTRO DE RT DE ORGANIZAÇÃO NÃO CONTÁBIL (PROFISSIONAL/ORGANIZAÇÃO CONTÁBIL) (POR AGENDAMENTO)","CANCELADO"
+            "REGISTRO DE RT DE ORGANIZAÇÃO NÃO CONTÁBIL (PROFISSIONAL/ORGANIZAÇÃO CONTÁBIL) (POR AGENDAMENTO)",
+            "CANCELADO"
         ]
 
         self.load_monthly_results()  # Agora, com a configuração correta
@@ -229,7 +236,6 @@ class App:
 
         # Oculta a combobox logo após sua criação
         self.fiscal_select_combobox.pack_forget()
-
 
         self.fiscal_select_combobox.pack_forget()
         # Configuração da Treeview de Resultados
@@ -256,7 +262,6 @@ class App:
         selected_tab = event.widget.select()
         tab_text = event.widget.tab(selected_tab, "text")
 
-
         # Verifica qual aba foi selecionada e chama a função de atualização correspondente
         if tab_text == "Atribuir":
 
@@ -267,14 +272,13 @@ class App:
         elif tab_text == "Resultados Do Fiscal":
 
             self.load_fiscal_results()
-            self.load_fiscal_results_for_admin()# Atualiza a Treeview da aba Resultados Do Fiscal
+            self.load_fiscal_results_for_admin()  # Atualiza a Treeview da aba Resultados Do Fiscal
         elif tab_text == "Resultado Mensal":
 
             self.load_monthly_results()  # Atualiza a Treeview da aba Resultado Mensal
 
-
         self.default_procedures = [
-        "DECORES (POR DECLARAÇÃO)",
+            "DECORES (POR DECLARAÇÃO)",
             "NBCTG 1002 (POR CONJUNTO DE DEMONSTRAÇÕES): PROJETO 2001",
             "NBCTG 1001 (POR CONJUNTO DE DEMONSTRAÇÕES): PROJETO 2001",
             "NBCTG 1000 E NBCTG 26 (POR CONJUNTO DE DEMONSTRAÇÕES): PROJETO 2001",
@@ -296,8 +300,9 @@ class App:
             "ENTIDADE FECHADA DE PREVIDÊNCIA COMPLEMENTAR (ANÁLISE DEMONSTRAÇÕES CONTÁBEIS DE ACORDO COM AS NBCS - ITG 2001)",
             "COOPERATIVAS (ANÁLISE DEMONSTRAÇÕES CONTÁBEIS DE ACORDO COM AS NBCS - ITG 2004)",
             "ENTIDADES SEM FINS LUCRATIVOS (ANÁLISE DEMONSTRAÇÕES CONTÁBEIS DE ACORDO COM AS NBCS - ITG 2002)",
-            "REGISTRO DE RT DE ORGANIZAÇÃO NÃO CONTÁBIL (PROFISSIONAL/ORGANIZAÇÃO CONTÁBIL) (POR AGENDAMENTO)","CANCELADO"
-    ]
+            "REGISTRO DE RT DE ORGANIZAÇÃO NÃO CONTÁBIL (PROFISSIONAL/ORGANIZAÇÃO CONTÁBIL) (POR AGENDAMENTO)",
+            "CANCELADO"
+        ]
 
     def load_default_procedures(self):
         """Carrega a lista padrão de procedimentos na aba 'Resultados do Fiscal'"""
@@ -328,7 +333,8 @@ class App:
             "ENTIDADE FECHADA DE PREVIDÊNCIA COMPLEMENTAR (ANÁLISE DEMONSTRAÇÕES CONTÁBEIS DE ACORDO COM AS NBCS - ITG 2001)",
             "COOPERATIVAS (ANÁLISE DEMONSTRAÇÕES CONTÁBEIS DE ACORDO COM AS NBCS - ITG 2004)",
             "ENTIDADES SEM FINS LUCRATIVOS (ANÁLISE DEMONSTRAÇÕES CONTÁBEIS DE ACORDO COM AS NBCS - ITG 2002)",
-            "REGISTRO DE RT DE ORGANIZAÇÃO NÃO CONTÁBIL (PROFISSIONAL/ORGANIZAÇÃO CONTÁBIL) (POR AGENDAMENTO)","CANCELADO"
+            "REGISTRO DE RT DE ORGANIZAÇÃO NÃO CONTÁBIL (PROFISSIONAL/ORGANIZAÇÃO CONTÁBIL) (POR AGENDAMENTO)",
+            "CANCELADO"
         ]
 
         # Adiciona os procedimentos com quantidade e resultado zerados e alternância de cores
@@ -410,7 +416,6 @@ class App:
                 cursor.execute(f"ALTER TABLE {table_name} ADD COLUMN motivo TEXT;")
         self.conn.commit()
 
-
     def carregar_grupos(self):
         """Carrega os grupos de procedimentos do banco de dados"""
         cursor = self.conn.cursor()
@@ -443,14 +448,11 @@ class App:
         self.conn.commit()
         messagebox.showinfo("Sucesso", f"Senha de '{fiscal_nome}' redefinida com sucesso!")
 
-
-
     def adicionar_botao_agrupar(self):
         # Verificar se o usuário logado é administrador
         if self.is_admin:
             self.agrupar_button = tk.Button(self.results_frame, text="Agrupar", command=self.abrir_janela_agrupar)
             self.agrupar_button.pack(pady=5)
-
 
     def desagrupar_procedimentos(self):
         """Função que desfaz o agrupamento e exibe os procedimentos originais na aba Resultados do Fiscal"""
@@ -467,19 +469,19 @@ class App:
 
         messagebox.showinfo("Desagrupado", "Procedimentos foram desagrupados e exibidos novamente!")
 
-
     def abrir_janela_agrupar(self):
         self.agrupar_window = tk.Toplevel(self.root)
         self.agrupar_window.title("Agrupar Procedimentos")
         self.agrupar_window.geometry("950x400")  # Define um tamanho inicial para a janela
 
         # Campo para nome do grupo
-        tk.Label(self.agrupar_window, text="Nome do Grupo:").grid( sticky='nw',row=0,column=0, padx=5, pady=5)
+        tk.Label(self.agrupar_window, text="Nome do Grupo:").grid(sticky='nw', row=0, column=0, padx=5, pady=5)
         self.nome_grupo_entry = tk.Entry(self.agrupar_window)
-        self.nome_grupo_entry.grid( sticky='nw',row=1, column=0, ipadx=80, pady=5,padx=5)
+        self.nome_grupo_entry.grid(sticky='nw', row=1, column=0, ipadx=80, pady=5, padx=5)
 
         # Listbox para selecionar múltiplos procedimentos
-        tk.Label(self.agrupar_window, text="Selecione os Procedimentos:").grid(row=2, column=0, padx=5, pady=5,sticky='n')
+        tk.Label(self.agrupar_window, text="Selecione os Procedimentos:").grid(row=2, column=0, padx=5, pady=5,
+                                                                               sticky='n')
         self.procedimentos_listbox = tk.Listbox(self.agrupar_window, selectmode=tk.MULTIPLE, height=10, width=150)
         self.procedimentos_listbox.grid(sticky='w')
         # Inserir os procedimentos disponíveis na Listbox
@@ -527,7 +529,8 @@ class App:
             return  # Já está configurado, não precisa adicionar de novo
 
         # Adicionar combobox para selecionar o fiscal
-        self.fiscal_report_combobox = ttk.Combobox(self.results_frame, values=['Todos'] + self.fiscais,state='readonly')
+        self.fiscal_report_combobox = ttk.Combobox(self.results_frame, values=['Todos'] + self.fiscais,
+                                                   state='readonly')
         self.fiscal_report_combobox.grid(row=0, column=0, padx=10, pady=10)
         self.fiscal_report_combobox.set("Todos")  # Valor padrão
 
@@ -617,22 +620,17 @@ class App:
             if 'quantidade' not in columns:
                 cursor.execute(f"ALTER TABLE {table_name} ADD COLUMN quantidade INTEGER DEFAULT 0;")
 
-
             if 'realizado' not in columns:
                 cursor.execute(f"ALTER TABLE {table_name} ADD COLUMN realizado INTEGER DEFAULT 0;")
-
 
             if 'meta_anual_cfc' not in columns:
                 cursor.execute(f"ALTER TABLE {table_name} ADD COLUMN meta_anual_cfc INTEGER DEFAULT 0;")
 
-
             if 'crcdf_30' not in columns:
                 cursor.execute(f"ALTER TABLE {table_name} ADD COLUMN crcdf_30 INTEGER DEFAULT 0;")
 
-
             if 'a_realizar' not in columns:
                 cursor.execute(f"ALTER TABLE {table_name} ADD COLUMN a_realizar INTEGER DEFAULT 0;")
-
 
         self.conn.commit()
 
@@ -661,7 +659,8 @@ class App:
         tk.Label(self.resultado_mensal_frame, text="Filtrar por Fiscal:").pack(pady=5)
 
         # Combobox para selecionar 'Geral' ou um fiscal específico
-        self.fiscal_monthly_combobox = ttk.Combobox(self.resultado_mensal_frame, values=["Geral"] + self.fiscais,state='readonly')
+        self.fiscal_monthly_combobox = ttk.Combobox(self.resultado_mensal_frame, values=["Geral"] + self.fiscais,
+                                                    state='readonly')
         self.fiscal_monthly_combobox.pack(pady=5)
         self.fiscal_monthly_combobox.set("Geral")  # Define "Geral" como o valor padrão
 
@@ -825,7 +824,7 @@ class App:
                 self.save_admin_metas()
                 self.load_fiscal_results_for_admin()
 
-            save_button = tk.Button(edit_window, text="Salvar",bg="green", command=save_edited_values)
+            save_button = tk.Button(edit_window, text="Salvar", bg="green", command=save_edited_values)
             save_button.grid(row=3, column=0, columnspan=2, pady=10, sticky="ew")
 
         # Bind para detectar o duplo clique nas linhas do Treeview
@@ -971,8 +970,6 @@ class App:
                 messagebox.showerror("Erro", "Os valores de 'Meta Anual CFC' e 'META+ % CRCDF' devem ser numéricos.")
                 return
 
-
-
             # Salvar as metas para todos os fiscais
             try:
                 cursor.execute('''
@@ -1076,7 +1073,7 @@ class App:
 
             # Frame para organizar os botões de exportação na aba "Relatório"
             export_report_frame = tk.Frame(self.results_frame)
-            export_report_frame.pack(pady=5,padx=30)
+            export_report_frame.pack(pady=5, padx=30)
 
             # Botão para exportar o conteúdo filtrado para PDF na aba Relatório
             self.export_report_pdf_button = tk.Button(export_report_frame, text="Exportar Filtrado para PDF",
@@ -1091,7 +1088,7 @@ class App:
 
             # Frame para organizar os botões de exportação na aba 'Resultados do Fiscal'
             export_fiscal_frame = tk.Frame(self.fiscal_results_frame)
-            export_fiscal_frame.pack(pady=5,padx=30)
+            export_fiscal_frame.pack(pady=5, padx=30)
 
             # Botão para exportar o conteúdo filtrado para PDF na aba Resultados Do Fiscal
             export_fiscal_pdf_button = tk.Button(export_fiscal_frame, text="Exportar para PDF",
@@ -1121,7 +1118,7 @@ class App:
                                                command=self.desagrupar_procedimentos,
                                                bg="light slate gray", fg="white")
             self.desagrupar_button.pack(side="left", padx=5)
-        
+
         # Atualizar a combobox de fiscais para todos os usuários
         self.fiscal_select_combobox['values'] = ["Geral"] + [f for f in self.fiscais if f != fiscal_name]
         self.fiscal_select_combobox.set("Geral")  # Define "Geral" como valor padrão
@@ -1197,7 +1194,6 @@ class App:
         # Atualiza a Treeview com os dados filtrados para a aba "Atribuir"
         self.update_treeview(self.data_tree, self.filtered_df)
 
-
         # Remove o frame de login
         self.login_frame.grid_forget()
         self.current_fiscal = fiscal_name
@@ -1208,7 +1204,6 @@ class App:
         # **Carregar e calcular os resultados para a aba "Resultados do Fiscal"**
         self.load_fiscal_results()  # Executa o cálculo automaticamente para a aba Resultados do Fiscal
         self.load_fiscal_results_for_admin()
-
 
         # Informar o tipo de usuário logado
         if self.is_admin:
@@ -1224,7 +1219,6 @@ class App:
 
         # Verifica se 'self.filtered_df' foi inicializado
         if self.filtered_df is None:
-
             return  # Interrompe a função se 'self.filtered_df' estiver vazio
 
         # Resto do código para carregar dados, caso 'self.filtered_df' esteja disponível
@@ -1245,7 +1239,6 @@ class App:
                 assigned_agendamentos.update(
                     str(row[0]) for row in cursor.fetchall())  # Converte para string para padronizar
 
-
         # Certifique-se de que self.filtered_df seja uma cópia para evitar o erro
         self.filtered_df = self.filtered_df.copy()
 
@@ -1254,8 +1247,6 @@ class App:
             self.filtered_df['Número Agendamento'] = self.filtered_df['Número Agendamento'].astype(str)
             # Filtrar os agendamentos que já foram atribuídos
             self.filtered_df = self.filtered_df[~self.filtered_df['Número Agendamento'].isin(assigned_agendamentos)]
-
-
 
         # Inserir os dados filtrados na Treeview
         for _, row in self.filtered_df.iterrows():
@@ -1281,8 +1272,6 @@ class App:
         # Retorna como DataFrame
         return pd.DataFrame(existing_rows,
                             columns=['coluna_1', 'coluna_2', 'coluna_3', 'coluna_4', 'coluna_5', 'coluna_6'])
-
-
 
     def update_treeview(self, tree, df):
         tree.delete(*tree.get_children())
@@ -1996,33 +1985,60 @@ class App:
         self.conn.commit()
 
     def setup_admin_tab(self):
-        # Configuração da aba de administração
-        tk.Label(self.admin_frame, text="Funções Administrativas", font=("Arial", 14, "bold")).pack(pady=10)
+        # Configuração da aba de administração com título destacado
+        title_label = tk.Label(self.admin_frame, text="Funções Administrativas", font=("Arial", 14, "bold"),
+                               bg="#4a90e2", fg="white")
+        title_label.grid(row=0, column=0, columnspan=2, pady=(10, 20), sticky="ew")
 
-        # Botão para zerar o banco de dados
-        reset_button = tk.Button(self.admin_frame, text="Zerar Banco de Dados", command=self.reset_database)
-        reset_button.pack(pady=5)
-        # Botão para cadastrar fiscal
-        register_button = tk.Button(self.admin_frame, text="Exportar banco De Dados", command=self.export_database_to_excel)
-        register_button.pack(pady=5)
+        # Cor de fundo para o título
+        title_label.config(highlightbackground="#4a90e2", highlightthickness=2)
 
-        # Botão para alterar a senha de um usuário
+        # Botão para zerar o banco de dados com cor personalizada
+        reset_button = tk.Button(self.admin_frame, text="Zerar Banco de Dados", command=self.reset_database,
+                                 bg="#d9534f", fg="white", activebackground="#c9302c")
+        reset_button.grid(row=1, column=0, sticky="ew", padx=10, pady=5)
+
+        # Botão para exportar o banco de dados com cor personalizada
+        export_button = tk.Button(self.admin_frame, text="Exportar Banco de Dados",
+                                  command=self.export_database_to_excel, bg="#5bc0de", fg="white",
+                                  activebackground="#31b0d5")
+        export_button.grid(row=1, column=1, sticky="ew", padx=10, pady=5)
+
+        # Botão para alterar a senha de um usuário com cor personalizada
         change_password_button = tk.Button(self.admin_frame, text="Alterar Senha de Usuário",
-                                           command=self.change_user_password)
-        change_password_button.pack(pady=5)
+                                           command=self.change_user_password, bg="#f0ad4e", fg="white",
+                                           activebackground="#ec971f")
+        change_password_button.grid(row=2, column=0, sticky="ew", padx=10, pady=5)
 
-        # Novo botão para excluir um usuário
-        delete_user_button = tk.Button(self.admin_frame, text="Excluir Usuário", command=self.delete_user)
-        delete_user_button.pack(pady=5)
+        # Botão para excluir um usuário com cor personalizada
+        delete_user_button = tk.Button(self.admin_frame, text="Excluir Usuário", command=self.delete_user, bg="#d9534f",
+                                       fg="white", activebackground="#c9302c")
+        delete_user_button.grid(row=2, column=1, sticky="ew", padx=10, pady=5)
 
-        # Adicionar o campo de cadastro de novo fiscal na aba de administração
-        tk.Label(self.admin_frame, text="Cadastro de Novo Fiscal:", font=("Arial", 12)).pack(pady=5)
+        # Adicionar o campo de cadastro de novo fiscal com um label colorido
+        fiscal_label = tk.Label(self.admin_frame, text="Cadastro de Novo Fiscal:", font=("Arial", 12), bg="#4a90e2",
+                                fg="white")
+        fiscal_label.grid(row=3, column=0, columnspan=2, pady=(20, 5), sticky="ew")
+
+        # Rótulo para o nome do novo fiscal
+        new_fiscal_name_label = tk.Label(self.admin_frame, text="Nome Do Novo Fiscal:", font=("Arial", 10),
+                                         bg="#f7f7f7", fg="#333333")
+        new_fiscal_name_label.grid(row=4, column=0, columnspan=2, pady=5)
+
+        # Campo de entrada para o nome do fiscal
         self.fiscal_entry_admin = tk.Entry(self.admin_frame)
-        self.fiscal_entry_admin.pack(pady=5)
+        self.fiscal_entry_admin.grid(row=5, column=0, columnspan=2, sticky="ew", padx=10, pady=5)
 
-        # Botão para cadastrar fiscal
-        register_button = tk.Button(self.admin_frame, text="Cadastrar Fiscal", command=self.register_fiscal_admin)
-        register_button.pack(pady=5)
+        # Botão para cadastrar fiscal com cor personalizada
+        register_button = tk.Button(self.admin_frame, text="Cadastrar Fiscal", command=self.register_fiscal_admin,
+                                    bg="#5cb85c", fg="white", activebackground="#4cae4c")
+        register_button.grid(row=6, column=0, columnspan=2, sticky="ew", padx=10, pady=10)
+
+        # Tornar a grid flexível
+        self.admin_frame.grid_columnconfigure(0, weight=1)
+        self.admin_frame.grid_columnconfigure(1, weight=1)
+
+
 
     def register_fiscal_admin(self):
         fiscal_name = self.fiscal_entry_admin.get().upper()
@@ -2152,6 +2168,7 @@ class App:
         else:
             messagebox.showerror("Erro", "A senha deve ter exatamente 6 caracteres.")
 
+
     def edit_quantity(self):
         """Abre uma janela para editar a quantidade do procedimento selecionado."""
         selected_item = self.results_tree.focus()
@@ -2166,7 +2183,8 @@ class App:
         # Janela para inserir a nova quantidade, sem referência principal
         edit_window = Toplevel()
         edit_window.title("Editar Quantidade")
-        edit_window.geometry("300x150")
+        edit_window.geometry("300x180")
+        self.root.iconbitmap("crc.ico")
 
         Label(edit_window, text="Nova Quantidade:").pack(pady=10)
         quantity_entry = Entry(edit_window)
