@@ -425,7 +425,7 @@ class App:
 
     def redefinir_senha(self):
         # Selecionar o fiscal para quem a senha será redefinida
-        fiscal_nome = simpledialog.askstring("Redefinir Senha", "Digite o nome do fiscal:")
+        fiscal_nome = simpledialog.askstring("Redefinir Senha", "Digite o nome do fiscal no campo abaixo:")
         if not fiscal_nome or fiscal_nome not in self.fiscais:
             messagebox.showerror("Erro", "Fiscal não encontrado!")
             return
@@ -468,6 +468,7 @@ class App:
         self.conn.commit()
 
         messagebox.showinfo("Desagrupado", "Procedimentos foram desagrupados e exibidos novamente!")
+        self.load_fiscal_results_for_admin()
 
     def abrir_janela_agrupar(self):
         self.agrupar_window = tk.Toplevel(self.root)
@@ -521,6 +522,7 @@ class App:
 
         messagebox.showinfo("Sucesso", "Grupo salvo com sucesso!")
         self.agrupar_window.destroy()
+        self.load_fiscal_results_for_admin()
 
     def create_admin_report_ui(self):
         """Cria a interface da aba Relatório para o administrador com opção de filtrar por fiscal"""
@@ -661,6 +663,8 @@ class App:
         # Combobox para selecionar 'Geral' ou um fiscal específico
         self.fiscal_monthly_combobox = ttk.Combobox(self.resultado_mensal_frame, values=["Geral"] + self.fiscais,
                                                     state='readonly')
+
+
         self.fiscal_monthly_combobox.pack(pady=5)
         self.fiscal_monthly_combobox.set("Geral")  # Define "Geral" como o valor padrão
 
@@ -1048,9 +1052,8 @@ class App:
         self.is_admin = is_admin == 1
 
         # Botão para carregar os resultados do fiscal selecionado
-        self.load_fiscal_results_button = tk.Button(self.fiscal_results_frame, text="Atualizar Resultados",
-                                                    command=self.load_fiscal_results_for_admin)
-        self.load_fiscal_results_button.pack(side="left", padx=5, pady=5)
+        #self.load_fiscal_results_button = tk.Button(self.fiscal_results_frame, text="Atualizar Resultados",command=self.load_fiscal_results_for_admin)
+        #self.load_fiscal_results_button.pack(side="left", padx=5, pady=5)
 
         # Adicionar botões de exportação apenas para administradores
         if self.is_admin:
@@ -1119,11 +1122,7 @@ class App:
                                                bg="light slate gray", fg="white")
             self.desagrupar_button.pack(side="left", padx=5)
 
-        # Atualizar a combobox de fiscais para todos os usuários
-        self.fiscal_select_combobox['values'] = ["Geral"] + [f for f in self.fiscais if f != fiscal_name]
-        self.fiscal_select_combobox.set("Geral")  # Define "Geral" como valor padrão
-        self.fiscal_select_combobox.pack(pady=5)
-        self.load_fiscal_results_button.pack(pady=5)
+
 
         # Verifica se é administrador para exibir a aba adicional
         if self.is_admin:
@@ -2005,13 +2004,13 @@ class App:
         export_button.grid(row=1, column=1, sticky="ew", padx=10, pady=5)
 
         # Botão para alterar a senha de um usuário com cor personalizada
-        change_password_button = tk.Button(self.admin_frame, text="Alterar Senha de Usuário",
+        change_password_button = tk.Button(self.admin_frame, text="Alterar Senha do Fiscal",
                                            command=self.change_user_password, bg="#f0ad4e", fg="white",
                                            activebackground="#ec971f")
         change_password_button.grid(row=2, column=0, sticky="ew", padx=10, pady=5)
 
         # Botão para excluir um usuário com cor personalizada
-        delete_user_button = tk.Button(self.admin_frame, text="Excluir Usuário", command=self.delete_user, bg="#d9534f",
+        delete_user_button = tk.Button(self.admin_frame, text="Excluir Fiscal", command=self.delete_user, bg="#d9534f",
                                        fg="white", activebackground="#c9302c")
         delete_user_button.grid(row=2, column=1, sticky="ew", padx=10, pady=5)
 
@@ -2021,7 +2020,7 @@ class App:
         fiscal_label.grid(row=3, column=0, columnspan=2, pady=(20, 5), sticky="ew")
 
         # Rótulo para o nome do novo fiscal
-        new_fiscal_name_label = tk.Label(self.admin_frame, text="Nome Do Novo Fiscal:", font=("Arial", 10),
+        new_fiscal_name_label = tk.Label(self.admin_frame, text="Digite o nome do novo fiscal no campo abaixo:", font=("Arial", 10),
                                          bg="#f7f7f7", fg="#333333")
         new_fiscal_name_label.grid(row=4, column=0, columnspan=2, pady=5)
 
@@ -2030,7 +2029,7 @@ class App:
         self.fiscal_entry_admin.grid(row=5, column=0, columnspan=2, sticky="ew", padx=10, pady=5)
 
         # Botão para cadastrar fiscal com cor personalizada
-        register_button = tk.Button(self.admin_frame, text="Cadastrar Fiscal", command=self.register_fiscal_admin,
+        register_button = tk.Button(self.admin_frame, text="Cadastrar Novo Fiscal", command=self.register_fiscal_admin,
                                     bg="#5cb85c", fg="white", activebackground="#4cae4c")
         register_button.grid(row=6, column=0, columnspan=2, sticky="ew", padx=10, pady=10)
 
