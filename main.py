@@ -65,18 +65,12 @@ class App:
         style.configure("Treeview.odd", background="#f0f0f0")  # Cor cinza claro
         style.configure("Treeview.even", background="#dcdcdc")  # Cinza mais escuro
 
-        tk.Label(self.login_frame, text="Escolha o Fiscal:").grid(row=0, column=0, sticky='w')
-        self.fiscal_combobox = ttk.Combobox(self.login_frame, values=self.fiscais)
+        tk.Label(self.login_frame, text="Escolha o Fiscal:", font=('Helvetica',15,"bold")).grid(row=0, column=0, sticky='w')
+        self.fiscal_combobox = ttk.Combobox(self.login_frame, values=self.fiscais, state='readonly' )
         self.fiscal_combobox.grid(row=0, column=1, sticky='ew')
 
         tk.Button(self.login_frame, text="Login", command=self.load_data).grid(row=1, columnspan=2, sticky='ew', pady=5)
 
-        tk.Label(self.login_frame, text="Cadastro de Fiscais:").grid(row=2, column=0, columnspan=2, sticky='w')
-        self.fiscal_entry = tk.Entry(self.login_frame)
-        self.fiscal_entry.grid(row=3, column=0, sticky='ew')
-
-        tk.Button(self.login_frame, text="Cadastrar Fiscal", command=self.register_fiscal).grid(row=3, column=1,
-                                                                                                sticky='ew', padx=5)
 
         if self.is_admin:  # Exibe apenas para administradores
             self.redefinir_senha_button = tk.Button(self.root, text="Redefinir Senha", command=self.redefinir_senha)
@@ -261,21 +255,21 @@ class App:
         # Obtém a aba selecionada
         selected_tab = event.widget.select()
         tab_text = event.widget.tab(selected_tab, "text")
-        print(f"Troca de aba detectada: {tab_text}")  # Debug
+
 
         # Verifica qual aba foi selecionada e chama a função de atualização correspondente
         if tab_text == "Atribuir":
-            print("Carregando dados para a aba 'Atribuir'")  # Debug
+
             self.load_attribuir_data()  # Atualiza a Treeview da aba Atribuir
         elif tab_text == "Relatório":
-            print("Carregando dados para a aba 'Relatório'")  # Debug
+
             self.load_results()  # Atualiza a Treeview da aba Relatório
         elif tab_text == "Resultados Do Fiscal":
-            print("Carregando dados para a aba 'Resultados Do Fiscal'")  # Debug
+
             self.load_fiscal_results()
             self.load_fiscal_results_for_admin()# Atualiza a Treeview da aba Resultados Do Fiscal
         elif tab_text == "Resultado Mensal":
-            print("Carregando dados para a aba 'Resultado Mensal'")  # Debug
+
             self.load_monthly_results()  # Atualiza a Treeview da aba Resultado Mensal
 
 
@@ -415,7 +409,7 @@ class App:
             if 'motivo' not in columns:
                 cursor.execute(f"ALTER TABLE {table_name} ADD COLUMN motivo TEXT;")
         self.conn.commit()
-        print("Coluna 'motivo' adicionada às tabelas de procedimentos de cada fiscal.")
+
 
     def carregar_grupos(self):
         """Carrega os grupos de procedimentos do banco de dados"""
@@ -533,7 +527,7 @@ class App:
             return  # Já está configurado, não precisa adicionar de novo
 
         # Adicionar combobox para selecionar o fiscal
-        self.fiscal_report_combobox = ttk.Combobox(self.results_frame, values=['Todos'] + self.fiscais)
+        self.fiscal_report_combobox = ttk.Combobox(self.results_frame, values=['Todos'] + self.fiscais,state='readonly')
         self.fiscal_report_combobox.grid(row=0, column=0, padx=10, pady=10)
         self.fiscal_report_combobox.set("Todos")  # Valor padrão
 
@@ -614,7 +608,7 @@ class App:
                     a_realizar INTEGER DEFAULT 0
                 )
             ''')
-            print(f"Tabela '{table_name}' criada com sucesso.")
+
         else:
             # Se a tabela já existir, verifica e adiciona as colunas que faltam
             cursor.execute(f"PRAGMA table_info({table_name});")
@@ -622,23 +616,23 @@ class App:
 
             if 'quantidade' not in columns:
                 cursor.execute(f"ALTER TABLE {table_name} ADD COLUMN quantidade INTEGER DEFAULT 0;")
-                print(f"Coluna 'quantidade' adicionada à tabela '{table_name}'.")
+
 
             if 'realizado' not in columns:
                 cursor.execute(f"ALTER TABLE {table_name} ADD COLUMN realizado INTEGER DEFAULT 0;")
-                print(f"Coluna 'realizado' adicionada à tabela '{table_name}'.")
+
 
             if 'meta_anual_cfc' not in columns:
                 cursor.execute(f"ALTER TABLE {table_name} ADD COLUMN meta_anual_cfc INTEGER DEFAULT 0;")
-                print(f"Coluna 'Meta Anual CFC' adicionada à tabela '{table_name}'.")
+
 
             if 'crcdf_30' not in columns:
                 cursor.execute(f"ALTER TABLE {table_name} ADD COLUMN crcdf_30 INTEGER DEFAULT 0;")
-                print(f"Coluna 'META+ % CRCDF' adicionada à tabela '{table_name}'.")
+
 
             if 'a_realizar' not in columns:
                 cursor.execute(f"ALTER TABLE {table_name} ADD COLUMN a_realizar INTEGER DEFAULT 0;")
-                print(f"Coluna 'A Realizar' adicionada à tabela '{table_name}'.")
+
 
         self.conn.commit()
 
@@ -651,11 +645,11 @@ class App:
                 self.fiscal_select_combobox.pack_forget()
 
             # Sempre carregar o modo "Geral" automaticamente para o administrador
-            print("Carregando resultados para todos os fiscais (modo Geral)")
+
             self.load_fiscal_results(fiscal_selecionado="Geral")
 
             # Permitir a edição das metas globais para o administrador
-            print("Permitir edição das metas globais...")
+
             self.allow_admin_meta_editing()
         else:
             # Caso o usuário não seja administrador, carregar apenas os dados do fiscal logado
@@ -667,7 +661,7 @@ class App:
         tk.Label(self.resultado_mensal_frame, text="Filtrar por Fiscal:").pack(pady=5)
 
         # Combobox para selecionar 'Geral' ou um fiscal específico
-        self.fiscal_monthly_combobox = ttk.Combobox(self.resultado_mensal_frame, values=["Geral"] + self.fiscais)
+        self.fiscal_monthly_combobox = ttk.Combobox(self.resultado_mensal_frame, values=["Geral"] + self.fiscais,state='readonly')
         self.fiscal_monthly_combobox.pack(pady=5)
         self.fiscal_monthly_combobox.set("Geral")  # Define "Geral" como o valor padrão
 
@@ -683,7 +677,7 @@ class App:
             self.load_monthly_results(selected_fiscal)  # Filtrar por fiscal específico
 
     def load_monthly_results(self, selected_fiscal=None):
-        print("Procedure weights:", self.procedure_weights)  # Para verificar se está acessível
+
         """Carrega os resultados mensais de procedimentos fiscalizatórios, multiplica pelo peso e calcula o total para cada procedimento."""
         # Limpar a Treeview antes de carregar os novos dados
         self.monthly_tree.delete(*self.monthly_tree.get_children())
@@ -977,8 +971,7 @@ class App:
                 messagebox.showerror("Erro", "Os valores de 'Meta Anual CFC' e 'META+ % CRCDF' devem ser numéricos.")
                 return
 
-            print(
-                f"Salvando metas para todos: Procedimento={procedimento}, Meta Anual CFC={meta_anual_cfc}, META+ % CRCDF={crcdf_30}")  # Depuração
+
 
             # Salvar as metas para todos os fiscais
             try:
@@ -990,10 +983,8 @@ class App:
                         crcdf_30=excluded.crcdf_30
                 ''', (procedimento, meta_anual_cfc, crcdf_30))
             except Exception as e:
-                print(f"Erro ao salvar no banco de dados: {e}")
+                self.conn.commit()
 
-        self.conn.commit()
-        print("Metas salvas para todos os fiscais com sucesso!")  # Depuração
         messagebox.showinfo("Sucesso", "Metas aplicadas a todos os fiscais com sucesso!")
 
     def load_fiscais(self):
@@ -1233,7 +1224,7 @@ class App:
 
         # Verifica se 'self.filtered_df' foi inicializado
         if self.filtered_df is None:
-            print("Aviso: 'self.filtered_df' está vazio. Carregue os dados primeiro.")
+
             return  # Interrompe a função se 'self.filtered_df' estiver vazio
 
         # Resto do código para carregar dados, caso 'self.filtered_df' esteja disponível
@@ -1254,7 +1245,6 @@ class App:
                 assigned_agendamentos.update(
                     str(row[0]) for row in cursor.fetchall())  # Converte para string para padronizar
 
-        print("Agendamentos atribuídos encontrados (strings):", assigned_agendamentos)
 
         # Certifique-se de que self.filtered_df seja uma cópia para evitar o erro
         self.filtered_df = self.filtered_df.copy()
@@ -1265,7 +1255,7 @@ class App:
             # Filtrar os agendamentos que já foram atribuídos
             self.filtered_df = self.filtered_df[~self.filtered_df['Número Agendamento'].isin(assigned_agendamentos)]
 
-        print("Agendamentos após a filtragem:", self.filtered_df['Número Agendamento'].tolist())
+
 
         # Inserir os dados filtrados na Treeview
         for _, row in self.filtered_df.iterrows():
@@ -1815,43 +1805,34 @@ class App:
         elif export_type == "excel":
             self.export_monthly_to_excel(data)
 
-    def export_monthly_to_pdf(self, data):
-        # Caminho para salvar o PDF
-        filename = filedialog.asksaveasfilename(defaultextension=".pdf", filetypes=[("PDF files", "*.pdf")])
-        if not filename:
-            return
+    def export_monthly_to_pdf(data, filename="resultado_mensal.pdf"):
+        # Configura o documento PDF
+        pdf = SimpleDocTemplate(filename, pagesize=A4)
+        elements = []
 
-        # Configuração do documento PDF
-        pdf = SimpleDocTemplate(filename, pagesize=landscape(A4), leftMargin=20, rightMargin=20, topMargin=20,
-                                bottomMargin=20)
-        styles = getSampleStyleSheet()
-        style_normal = styles['Normal']
-        style_normal.fontSize = 8
+        # Obtém os dados do DataFrame para a tabela
+        data_frame = pd.DataFrame(data)  # Converte para DataFrame se necessário
+        table_data = [data_frame.columns.to_list()] + data_frame.values.tolist()  # Cabeçalhos + dados
 
-        # Colunas específicas para "Resultado Mensal"
-        columns = ["Procedimento", "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto",
-                   "Setembro", "Outubro", "Novembro", "Dezembro", "Total Realizado"]
-
-        # Formatar os dados para o PDF
-        formatted_data = [[Paragraph(str(value), style_normal) for value in row] for row in data]
-        formatted_data.insert(0, [Paragraph(col, styles['Heading4']) for col in columns])
-
-        # Configuração da tabela no PDF
-        table = Table(formatted_data)
+        # Configura a tabela para o PDF
+        table = Table(table_data)
         table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+            ('BACKGROUND', (0, 0), (-1, 0), colors.grey),  # Cabeçalho em cinza
             ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
             ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
             ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('FONTSIZE', (0, 0), (-1, -1), 8),
+            ('FONTSIZE', (0, 0), (-1, 0), 10),
             ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-            ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
-            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.whitesmoke, colors.lightgrey]),
+            ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black),
         ]))
 
-        # Criar o PDF
-        pdf.build([table])
-        messagebox.showinfo("Exportação Completa", f"Dados exportados para {filename}")
+        # Adiciona a tabela ao documento PDF
+        elements.append(table)
+
+        # Salva o PDF
+        pdf.build(elements)
+        print(f"Arquivo PDF '{filename}' exportado com sucesso.")
 
     def export_monthly_to_excel(self, data):
         # Caminho para salvar o arquivo Excel
@@ -2013,7 +1994,6 @@ class App:
             ''', (row[0], row[1], row[2], row[3], row[4], row[5], row[6], row[7]))
 
         self.conn.commit()
-        print(f"Dados inseridos na tabela '{table_name}': {row}")
 
     def setup_admin_tab(self):
         # Configuração da aba de administração
@@ -2022,15 +2002,55 @@ class App:
         # Botão para zerar o banco de dados
         reset_button = tk.Button(self.admin_frame, text="Zerar Banco de Dados", command=self.reset_database)
         reset_button.pack(pady=5)
+        # Botão para cadastrar fiscal
+        register_button = tk.Button(self.admin_frame, text="Exportar banco De Dados", command=self.export_database_to_excel)
+        register_button.pack(pady=5)
 
         # Botão para alterar a senha de um usuário
         change_password_button = tk.Button(self.admin_frame, text="Alterar Senha de Usuário",
                                            command=self.change_user_password)
         change_password_button.pack(pady=5)
 
-        # **Novo botão para excluir um usuário**
+        # Novo botão para excluir um usuário
         delete_user_button = tk.Button(self.admin_frame, text="Excluir Usuário", command=self.delete_user)
         delete_user_button.pack(pady=5)
+
+        # Adicionar o campo de cadastro de novo fiscal na aba de administração
+        tk.Label(self.admin_frame, text="Cadastro de Novo Fiscal:", font=("Arial", 12)).pack(pady=5)
+        self.fiscal_entry_admin = tk.Entry(self.admin_frame)
+        self.fiscal_entry_admin.pack(pady=5)
+
+        # Botão para cadastrar fiscal
+        register_button = tk.Button(self.admin_frame, text="Cadastrar Fiscal", command=self.register_fiscal_admin)
+        register_button.pack(pady=5)
+
+    def register_fiscal_admin(self):
+        fiscal_name = self.fiscal_entry_admin.get().upper()
+        if fiscal_name:
+            if fiscal_name not in self.fiscais:
+                # Pergunta se o fiscal será administrador
+                is_admin = messagebox.askyesno("Administrador", "Este fiscal será um administrador?")
+                admin_value = 1 if is_admin else 0
+
+                # Solicitar senha
+                password = simpledialog.askstring("Senha", "Defina uma senha de 6 caracteres:", show='*')
+                if not password or len(password) != 6:
+                    messagebox.showerror("Erro", "A senha deve ter exatamente 6 caracteres.")
+                    return
+
+                cursor = self.conn.cursor()
+                cursor.execute("INSERT INTO fiscals (name, password, is_admin) VALUES (?, ?, ?)",
+                               (fiscal_name, password, admin_value))
+                self.conn.commit()
+                self.fiscais.append(fiscal_name)
+                self.fiscal_combobox['values'] = self.fiscais
+                self.create_procedures_table(fiscal_name)
+                messagebox.showinfo("Sucesso", f"Fiscal '{fiscal_name}' cadastrado com sucesso!")
+                self.fiscal_entry_admin.delete(0, tk.END)
+            else:
+                messagebox.showwarning("Atenção", "Fiscal já cadastrado!")
+        else:
+            messagebox.showwarning("Atenção", "Insira um nome para o fiscal.")
 
     def delete_user(self):
         # Solicita o nome do usuário a ser excluído
@@ -2183,7 +2203,47 @@ class App:
         # Botão para salvar a nova quantidade
         Button(edit_window, text="Salvar", command=save_new_quantity).pack(pady=10)
 
+    def export_database_to_excel(self):
+        # Caminho para salvar o arquivo Excel
+        filename = filedialog.asksaveasfilename(defaultextension=".xlsx", filetypes=[("Excel files", "*.xlsx")])
+        if not filename:
+            return
 
+        # Conectar ao banco de dados e coletar os dados de todas as tabelas
+        with pd.ExcelWriter(filename, engine='xlsxwriter') as writer:
+            cursor = self.conn.cursor()
+
+            # Exporta a tabela de fiscais
+            cursor.execute("SELECT * FROM fiscals")
+            fiscals_data = cursor.fetchall()
+            fiscals_columns = [description[0] for description in cursor.description]
+            pd.DataFrame(fiscals_data, columns=fiscals_columns).to_excel(writer, sheet_name="Fiscais", index=False)
+
+            # Exporta a tabela de metas globais
+            cursor.execute("SELECT * FROM metas_globais")
+            metas_data = cursor.fetchall()
+            metas_columns = [description[0] for description in cursor.description]
+            pd.DataFrame(metas_data, columns=metas_columns).to_excel(writer, sheet_name="Metas Globais", index=False)
+
+            # Exporta a tabela de grupos de procedimentos
+            cursor.execute("SELECT * FROM grupos_procedimentos")
+            grupos_data = cursor.fetchall()
+            grupos_columns = [description[0] for description in cursor.description]
+            pd.DataFrame(grupos_data, columns=grupos_columns).to_excel(writer, sheet_name="Grupos de Procedimentos",
+                                                                       index=False)
+
+            # Exporta todas as tabelas de procedimentos de cada fiscal
+            for fiscal in self.fiscais:
+                table_name = f'procedimentos_{fiscal}'
+                cursor.execute(f"SELECT name FROM sqlite_master WHERE type='table' AND name='{table_name}';")
+                if cursor.fetchone():
+                    cursor.execute(f"SELECT * FROM {table_name}")
+                    fiscal_data = cursor.fetchall()
+                    fiscal_columns = [description[0] for description in cursor.description]
+                    pd.DataFrame(fiscal_data, columns=fiscal_columns).to_excel(writer, sheet_name=f"Proced_{fiscal}",
+                                                                               index=False)
+
+        messagebox.showinfo("Exportação Completa", f"Banco de dados exportado para {filename}")
 
     def close_db(self):
         self.conn.close()
