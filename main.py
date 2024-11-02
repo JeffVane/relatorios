@@ -1,6 +1,6 @@
 import pandas as pd
 import tkinter as tk
-from tkinter import ttk, filedialog, messagebox, MULTIPLE, Toplevel, Label, Button
+from tkinter import ttk, filedialog, messagebox, MULTIPLE, Toplevel, Label, Button, Entry
 import sqlite3
 import atexit
 import tkinter.simpledialog as simpledialog  # Importa o módulo para caixas de diálogo
@@ -78,9 +78,6 @@ class App:
         tk.Button(self.login_frame, text="Cadastrar Fiscal", command=self.register_fiscal).grid(row=3, column=1,
                                                                                                 sticky='ew', padx=5)
 
-        self.alterar_senha_button = tk.Button(self.login_frame, text="Alterar Senha", command=self.alterar_senha)
-        self.alterar_senha_button.grid(row=3, column=2, sticky='ew', padx=5)
-
         if self.is_admin:  # Exibe apenas para administradores
             self.redefinir_senha_button = tk.Button(self.root, text="Redefinir Senha", command=self.redefinir_senha)
             self.redefinir_senha_button.grid(row=2, column=1, padx=10, pady=10)  # Defina a posição com grid
@@ -105,6 +102,8 @@ class App:
         self.search_entry = tk.Entry(self.results_frame, textvariable=self.search_var)
         self.search_entry.pack(side=tk.TOP, fill=tk.X, padx=10, pady=5)
         self.search_entry.bind("<KeyRelease>", self.update_report_search)
+        # Adicione este botão ao layout da aba "Relatório"
+        Button(self.results_frame, text="Editar Quantidade", command=self.edit_quantity).pack(pady=5)
 
         #Mensal
 
@@ -154,6 +153,8 @@ class App:
 
         self.data_tree.bind("<ButtonRelease-1>", self.select_row)
 
+
+
         # Configuração de responsividade
         self.root.grid_rowconfigure(1, weight=1)
         self.root.grid_columnconfigure(0, weight=1)
@@ -184,8 +185,7 @@ class App:
             "ENTIDADE FECHADA DE PREVIDÊNCIA COMPLEMENTAR (ANÁLISE DEMONSTRAÇÕES CONTÁBEIS DE ACORDO COM AS NBCS - ITG 2001)": 2,
             "COOPERATIVAS (ANÁLISE DEMONSTRAÇÕES CONTÁBEIS DE ACORDO COM AS NBCS - ITG 2004)": 2,
             "ENTIDADES SEM FINS LUCRATIVOS (ANÁLISE DEMONSTRAÇÕES CONTÁBEIS DE ACORDO COM AS NBCS - ITG 2002)": 2,
-            "REGISTRO DE RT DE ORGANIZAÇÃO NÃO CONTÁBIL (PROFISSIONAL/ORGANIZAÇÃO CONTÁBIL) (POR AGENDAMENTO)": 1
-        }
+            "REGISTRO DE RT DE ORGANIZAÇÃO NÃO CONTÁBIL (PROFISSIONAL/ORGANIZAÇÃO CONTÁBIL) (POR AGENDAMENTO)": 1}
 
         # Lista completa dos procedimentos fiscalizatórios
         procedimentos = [
@@ -211,7 +211,7 @@ class App:
             "ENTIDADE FECHADA DE PREVIDÊNCIA COMPLEMENTAR (ANÁLISE DEMONSTRAÇÕES CONTÁBEIS DE ACORDO COM AS NBCS - ITG 2001)",
             "COOPERATIVAS (ANÁLISE DEMONSTRAÇÕES CONTÁBEIS DE ACORDO COM AS NBCS - ITG 2004)",
             "ENTIDADES SEM FINS LUCRATIVOS (ANÁLISE DEMONSTRAÇÕES CONTÁBEIS DE ACORDO COM AS NBCS - ITG 2002)",
-            "REGISTRO DE RT DE ORGANIZAÇÃO NÃO CONTÁBIL (PROFISSIONAL/ORGANIZAÇÃO CONTÁBIL) (POR AGENDAMENTO)"
+            "REGISTRO DE RT DE ORGANIZAÇÃO NÃO CONTÁBIL (PROFISSIONAL/ORGANIZAÇÃO CONTÁBIL) (POR AGENDAMENTO)","CANCELADO"
         ]
 
         self.load_monthly_results()  # Agora, com a configuração correta
@@ -254,6 +254,30 @@ class App:
                 self.results_tree.column(col, anchor="center", width=800)  # Define a largura inicial para a coluna
             else:
                 self.results_tree.column(col, anchor="center")
+            # Evento para detectar mudança de aba
+            self.notebook.bind("<<NotebookTabChanged>>", self.on_tab_change)
+
+    def on_tab_change(self, event):
+        # Obtém a aba selecionada
+        selected_tab = event.widget.select()
+        tab_text = event.widget.tab(selected_tab, "text")
+        print(f"Troca de aba detectada: {tab_text}")  # Debug
+
+        # Verifica qual aba foi selecionada e chama a função de atualização correspondente
+        if tab_text == "Atribuir":
+            print("Carregando dados para a aba 'Atribuir'")  # Debug
+            self.load_attribuir_data()  # Atualiza a Treeview da aba Atribuir
+        elif tab_text == "Relatório":
+            print("Carregando dados para a aba 'Relatório'")  # Debug
+            self.load_results()  # Atualiza a Treeview da aba Relatório
+        elif tab_text == "Resultados Do Fiscal":
+            print("Carregando dados para a aba 'Resultados Do Fiscal'")  # Debug
+            self.load_fiscal_results()
+            self.load_fiscal_results_for_admin()# Atualiza a Treeview da aba Resultados Do Fiscal
+        elif tab_text == "Resultado Mensal":
+            print("Carregando dados para a aba 'Resultado Mensal'")  # Debug
+            self.load_monthly_results()  # Atualiza a Treeview da aba Resultado Mensal
+
 
         self.default_procedures = [
         "DECORES (POR DECLARAÇÃO)",
@@ -278,7 +302,7 @@ class App:
             "ENTIDADE FECHADA DE PREVIDÊNCIA COMPLEMENTAR (ANÁLISE DEMONSTRAÇÕES CONTÁBEIS DE ACORDO COM AS NBCS - ITG 2001)",
             "COOPERATIVAS (ANÁLISE DEMONSTRAÇÕES CONTÁBEIS DE ACORDO COM AS NBCS - ITG 2004)",
             "ENTIDADES SEM FINS LUCRATIVOS (ANÁLISE DEMONSTRAÇÕES CONTÁBEIS DE ACORDO COM AS NBCS - ITG 2002)",
-            "REGISTRO DE RT DE ORGANIZAÇÃO NÃO CONTÁBIL (PROFISSIONAL/ORGANIZAÇÃO CONTÁBIL) (POR AGENDAMENTO)"
+            "REGISTRO DE RT DE ORGANIZAÇÃO NÃO CONTÁBIL (PROFISSIONAL/ORGANIZAÇÃO CONTÁBIL) (POR AGENDAMENTO)","CANCELADO"
     ]
 
     def load_default_procedures(self):
@@ -310,7 +334,7 @@ class App:
             "ENTIDADE FECHADA DE PREVIDÊNCIA COMPLEMENTAR (ANÁLISE DEMONSTRAÇÕES CONTÁBEIS DE ACORDO COM AS NBCS - ITG 2001)",
             "COOPERATIVAS (ANÁLISE DEMONSTRAÇÕES CONTÁBEIS DE ACORDO COM AS NBCS - ITG 2004)",
             "ENTIDADES SEM FINS LUCRATIVOS (ANÁLISE DEMONSTRAÇÕES CONTÁBEIS DE ACORDO COM AS NBCS - ITG 2002)",
-            "REGISTRO DE RT DE ORGANIZAÇÃO NÃO CONTÁBIL (PROFISSIONAL/ORGANIZAÇÃO CONTÁBIL) (POR AGENDAMENTO)"
+            "REGISTRO DE RT DE ORGANIZAÇÃO NÃO CONTÁBIL (PROFISSIONAL/ORGANIZAÇÃO CONTÁBIL) (POR AGENDAMENTO)","CANCELADO"
         ]
 
         # Adiciona os procedimentos com quantidade e resultado zerados e alternância de cores
@@ -381,6 +405,18 @@ class App:
         ''')
         self.conn.commit()
 
+    def add_motivo_column(self):
+        cursor = self.conn.cursor()
+        for fiscal in self.fiscais:
+            table_name = f'procedimentos_{fiscal}'
+            # Verifica se a coluna 'motivo' já existe para evitar erro
+            cursor.execute(f"PRAGMA table_info({table_name});")
+            columns = [col[1] for col in cursor.fetchall()]
+            if 'motivo' not in columns:
+                cursor.execute(f"ALTER TABLE {table_name} ADD COLUMN motivo TEXT;")
+        self.conn.commit()
+        print("Coluna 'motivo' adicionada às tabelas de procedimentos de cada fiscal.")
+
     def carregar_grupos(self):
         """Carrega os grupos de procedimentos do banco de dados"""
         cursor = self.conn.cursor()
@@ -413,24 +449,7 @@ class App:
         self.conn.commit()
         messagebox.showinfo("Sucesso", f"Senha de '{fiscal_nome}' redefinida com sucesso!")
 
-    def alterar_senha(self):
-        # Solicitar a nova senha
-        nova_senha = simpledialog.askstring("Alterar Senha", "Digite a nova senha de 6 caracteres:", show='*')
-        if not nova_senha or len(nova_senha) != 6:
-            messagebox.showerror("Erro", "A senha deve ter exatamente 6 caracteres.")
-            return
 
-        # Confirmar a nova senha
-        confirmar_senha = simpledialog.askstring("Confirmar Senha", "Confirme a nova senha:", show='*')
-        if nova_senha != confirmar_senha:
-            messagebox.showerror("Erro", "As senhas não coincidem!")
-            return
-
-        # Atualizar a senha no banco de dados para o fiscal logado
-        cursor = self.conn.cursor()
-        cursor.execute("UPDATE fiscals SET password=? WHERE name=?", (nova_senha, self.current_fiscal))
-        self.conn.commit()
-        messagebox.showinfo("Sucesso", "Senha alterada com sucesso!")
 
     def adicionar_botao_agrupar(self):
         # Verificar se o usuário logado é administrador
@@ -458,26 +477,27 @@ class App:
     def abrir_janela_agrupar(self):
         self.agrupar_window = tk.Toplevel(self.root)
         self.agrupar_window.title("Agrupar Procedimentos")
+        self.agrupar_window.geometry("950x400")  # Define um tamanho inicial para a janela
 
         # Campo para nome do grupo
-        tk.Label(self.agrupar_window, text="Nome do Grupo:").grid(row=0, column=0, padx=5, pady=5)
+        tk.Label(self.agrupar_window, text="Nome do Grupo:").grid( sticky='nw',row=0,column=0, padx=5, pady=5)
         self.nome_grupo_entry = tk.Entry(self.agrupar_window)
-        self.nome_grupo_entry.grid(row=0, column=1, padx=5, pady=5)
+        self.nome_grupo_entry.grid( sticky='nw',row=1, column=0, ipadx=80, pady=5,padx=5)
 
         # Listbox para selecionar múltiplos procedimentos
-        tk.Label(self.agrupar_window, text="Selecione os Procedimentos:").grid(row=1, column=0, padx=5, pady=5)
-        self.procedimentos_listbox = tk.Listbox(self.agrupar_window, selectmode=tk.MULTIPLE, height=10, width=50)
-
+        tk.Label(self.agrupar_window, text="Selecione os Procedimentos:").grid(row=2, column=0, padx=5, pady=5,sticky='n')
+        self.procedimentos_listbox = tk.Listbox(self.agrupar_window, selectmode=tk.MULTIPLE, height=10, width=150)
+        self.procedimentos_listbox.grid(sticky='w')
         # Inserir os procedimentos disponíveis na Listbox
         for proc in self.procedure_weights.keys():
             self.procedimentos_listbox.insert(tk.END, proc)
 
-        self.procedimentos_listbox.grid(row=1, column=1, padx=5, pady=5)
+        self.procedimentos_listbox.grid(row=3, column=0, padx=5, pady=5)
 
         # Botão para salvar o agrupamento
         salvar_button = tk.Button(self.agrupar_window, text="Salvar Agrupamento",
                                   command=self.salvar_agrupar_procedimentos)
-        salvar_button.grid(row=2, column=1, padx=5, pady=5)
+        salvar_button.grid(row=4, column=0, padx=5, pady=5)
 
     def salvar_agrupar_procedimentos(self):
         nome_grupo = self.nome_grupo_entry.get()
@@ -720,7 +740,9 @@ class App:
             cursor.execute(f'''
                 SELECT procedimento, quantidade, coluna_1 
                 FROM {table_name}
+                WHERE procedimento != 'CANCELADO'
             ''')
+
             agendamentos = cursor.fetchall()
 
             # Organizar os resultados por procedimento e por mês
@@ -772,36 +794,45 @@ class App:
             # Abrir uma nova janela para editar as metas
             edit_window = tk.Toplevel(self.root)
             edit_window.title("Editar Metas")
+            edit_window.geometry("700x300")  # Define um tamanho inicial para a janela
 
-            tk.Label(edit_window, text="Procedimento:").grid(row=0, column=0)
-            tk.Label(edit_window, text=values[0]).grid(row=0, column=1)  # Mostrar o nome do procedimento
+            # Configurações de redimensionamento para tornar a janela responsiva
+            edit_window.grid_rowconfigure(0, weight=1)
+            edit_window.grid_rowconfigure(1, weight=1)
+            edit_window.grid_rowconfigure(2, weight=1)
+            edit_window.grid_rowconfigure(3, weight=1)
+            edit_window.grid_columnconfigure(0, weight=1)
+            edit_window.grid_columnconfigure(1, weight=2)
 
-            tk.Label(edit_window, text="Meta Anual CFC:").grid(row=1, column=0)
+            # Label e campo para o nome do procedimento
+            tk.Label(edit_window, text="Procedimento:").grid(row=0, column=0, sticky="e", padx=5, pady=5)
+            tk.Label(edit_window, text=values[0]).grid(row=0, column=1, sticky="w", padx=5, pady=5)
+
+            # Label e campo para Meta Anual CFC
+            tk.Label(edit_window, text="Meta Anual CFC:").grid(row=1, column=0, sticky="e", padx=5, pady=5)
             meta_entry = tk.Entry(edit_window)
-            meta_entry.grid(row=1, column=1)
+            meta_entry.grid(row=1, column=1, sticky="ew", padx=5, pady=5)
             meta_entry.insert(0, values[1])  # Inserir o valor atual da Meta Anual CFC
 
-            tk.Label(edit_window, text="META+ % CRCDF:").grid(row=2, column=0)
+            # Label e campo para META+ % CRCDF
+            tk.Label(edit_window, text="META+ % CRCDF:").grid(row=2, column=0, sticky="e", padx=5, pady=5)
             crcdf_entry = tk.Entry(edit_window)
-            crcdf_entry.grid(row=2, column=1)
+            crcdf_entry.grid(row=2, column=1, sticky="ew", padx=5, pady=5)
             crcdf_entry.insert(0, values[2])  # Inserir o valor atual do META+ % CRCDF
 
+            # Botão para salvar
             def save_edited_values():
                 # Atualizar os valores na Treeview
                 self.fiscal_results_tree.set(item, column="Meta Anual CFC", value=meta_entry.get())
                 self.fiscal_results_tree.set(item, column="Meta+ % CRCDF", value=crcdf_entry.get())
-
                 # Fechar a janela de edição
                 edit_window.destroy()
-
-                # Agora chame a função que salva os valores no banco de dados
+                # Chame a função para salvar os valores no banco de dados
                 self.save_admin_metas()
                 self.load_fiscal_results_for_admin()
 
-            # Botão para salvar as edições
-            save_button = tk.Button(edit_window, text="Salvar", command=save_edited_values)
-            save_button.grid(row=3, columnspan=2, pady=10)
-
+            save_button = tk.Button(edit_window, text="Salvar",bg="green", command=save_edited_values)
+            save_button.grid(row=3, column=0, columnspan=2, pady=10, sticky="ew")
 
         # Bind para detectar o duplo clique nas linhas do Treeview
         self.fiscal_results_tree.bind("<Double-1>", on_double_click)
@@ -1099,14 +1130,18 @@ class App:
                                                command=self.desagrupar_procedimentos,
                                                bg="light slate gray", fg="white")
             self.desagrupar_button.pack(side="left", padx=5)
-
+        
         # Atualizar a combobox de fiscais para todos os usuários
         self.fiscal_select_combobox['values'] = ["Geral"] + [f for f in self.fiscais if f != fiscal_name]
         self.fiscal_select_combobox.set("Geral")  # Define "Geral" como valor padrão
         self.fiscal_select_combobox.pack(pady=5)
         self.load_fiscal_results_button.pack(pady=5)
 
-
+        # Verifica se é administrador para exibir a aba adicional
+        if self.is_admin:
+            self.admin_frame = ttk.Frame(self.notebook)
+            self.notebook.add(self.admin_frame, text="Administração")
+            self.setup_admin_tab()
 
         # Chamar a função para criar a combobox na aba "Resultado Mensal" para todos os usuários
         self.create_admin_combobox_for_monthly_results()
@@ -1193,11 +1228,15 @@ class App:
             self.update_treeview(self.data_tree, self.filtered_df)
             self.load_fiscal_results_for_admin()
 
-
     def load_attribuir_data(self):
         """Carrega os dados na aba 'Atribuir', ocultando agendamentos já atribuídos nas tabelas de procedimentos de cada usuário."""
 
-        # Limpa a Treeview antes de carregar novos dados
+        # Verifica se 'self.filtered_df' foi inicializado
+        if self.filtered_df is None:
+            print("Aviso: 'self.filtered_df' está vazio. Carregue os dados primeiro.")
+            return  # Interrompe a função se 'self.filtered_df' estiver vazio
+
+        # Resto do código para carregar dados, caso 'self.filtered_df' esteja disponível
         self.data_tree.delete(*self.data_tree.get_children())
 
         cursor = self.conn.cursor()
@@ -1215,9 +1254,7 @@ class App:
                 assigned_agendamentos.update(
                     str(row[0]) for row in cursor.fetchall())  # Converte para string para padronizar
 
-        # Debug: Imprimir valores atribuídos e DataFrame original para comparação
         print("Agendamentos atribuídos encontrados (strings):", assigned_agendamentos)
-        print("Agendamentos antes da filtragem (strings):", [str(i) for i in self.filtered_df['Número Agendamento']])
 
         # Certifique-se de que self.filtered_df seja uma cópia para evitar o erro
         self.filtered_df = self.filtered_df.copy()
@@ -1228,7 +1265,6 @@ class App:
             # Filtrar os agendamentos que já foram atribuídos
             self.filtered_df = self.filtered_df[~self.filtered_df['Número Agendamento'].isin(assigned_agendamentos)]
 
-        # Debug: Imprimir DataFrame após a filtragem para verificação
         print("Agendamentos após a filtragem:", self.filtered_df['Número Agendamento'].tolist())
 
         # Inserir os dados filtrados na Treeview
@@ -1239,6 +1275,8 @@ class App:
                 if len(date_parts) == 3:
                     formatted_row[0] = f"{date_parts[2]}-{date_parts[1]}-{date_parts[0]}"
             self.data_tree.insert("", "end", values=formatted_row)
+            # Evento para detectar mudança de aba
+            self.notebook.bind("<<NotebookTabChanged>>", self.on_tab_change)
 
     def load_existing_report_data(self, fiscal_name):
         """Carrega os dados existentes na aba Relatório do banco de dados para o fiscal logado"""
@@ -1283,13 +1321,24 @@ class App:
         tree.tag_configure('even', background='#dcdcdc')
 
     def load_results(self):
-        """Carrega os dados na Treeview da aba 'Relatório', evitando duplicações, e armazena-os em uma lista para busca."""
-        if not self.current_fiscal:
-            return
-
+        """Carrega os dados na Treeview da aba 'Relatório', evitando duplicações, procedimentos cancelados e armazenando-os em uma lista para busca."""
         # Limpa a Treeview da aba Relatório antes de carregar novos dados
         self.results_tree.delete(*self.results_tree.get_children())
         self.original_tree_items = []  # Limpa a lista de itens originais para armazenar os novos dados
+
+        # Configura as colunas da Treeview
+        self.results_tree["columns"] = ['Data Agendada', 'Número Agendamento', 'Fiscal', 'Tipo Registro',
+                                        'Número Registro', 'Nome', 'Procedimento Atribuído', 'Quantidade']
+
+        # Configuração de cabeçalhos e largura das colunas
+        for col in self.results_tree["columns"]:
+            self.results_tree.heading(col, text=col)
+            if col == "Procedimento Atribuído":
+                self.results_tree.column(col, anchor="center", width=620)
+            elif col == "Nome":
+                self.results_tree.column(col, anchor="center", width=550)
+            else:
+                self.results_tree.column(col, anchor="center", width=100)
 
         cursor = self.conn.cursor()
         row_color_1 = "#f0f0f0"
@@ -1312,9 +1361,14 @@ class App:
                 if not table_exists:
                     continue
 
-                # Carregar os dados do banco de dados (procedimento, quantidade e fiscal) para cada fiscal
+                # Carregar os dados do banco de dados excluindo os procedimentos cancelados
                 cursor.execute(
-                    f"SELECT coluna_1, coluna_2, coluna_3, coluna_4, coluna_5, coluna_6, procedimento, quantidade FROM {table_name}")
+                    f"""
+                    SELECT coluna_1, coluna_2, coluna_3, coluna_4, coluna_5, coluna_6, procedimento, quantidade 
+                    FROM {table_name} 
+                    WHERE procedimento != 'CANCELADO'
+                    """
+                )
                 db_rows = cursor.fetchall()
 
                 # Adiciona apenas procedimentos únicos
@@ -1347,6 +1401,8 @@ class App:
                 # Armazena o item original para busca
                 self.original_tree_items.append(formatted_row + [resultado])
 
+
+
         else:
             # Carregar apenas os dados do fiscal logado
             table_name = f'procedimentos_{self.current_fiscal}'
@@ -1354,38 +1410,37 @@ class App:
             # Verificar se a tabela existe
             cursor.execute(f"SELECT name FROM sqlite_master WHERE type='table' AND name='{table_name}';")
             table_exists = cursor.fetchone()
-            if not table_exists:
-                return
+            if table_exists:
+                # Carrega os dados da tabela do fiscal logado, incluindo o procedimento e a quantidade
+                cursor.execute(
+                    f"SELECT coluna_1, coluna_2, coluna_3, coluna_4, coluna_5, coluna_6, procedimento, quantidade FROM {table_name}")
+                rows = cursor.fetchall()
 
-            # Carrega os dados da tabela do fiscal logado, incluindo o procedimento e a quantidade
-            cursor.execute(
-                f"SELECT coluna_1, coluna_2, coluna_3, coluna_4, coluna_5, coluna_6, procedimento, quantidade FROM {table_name}")
-            rows = cursor.fetchall()
+                for index, row in enumerate(rows):
+                    if tuple(row) not in procedimentos_carregados:
+                        procedimentos_carregados.add(tuple(row))
+                        formatted_row = list(row)
 
-            for index, row in enumerate(rows):
-                if tuple(row) not in procedimentos_carregados:
-                    procedimentos_carregados.add(tuple(row))
-                    formatted_row = list(row)
+                        # Calcula o resultado (quantidade * peso do procedimento)
+                        procedimento = formatted_row[6]
+                        quantidade = formatted_row[7]
+                        peso = self.procedure_weights.get(procedimento, 1)  # Peso padrão é 1 se não encontrado
+                        resultado = quantidade * peso
 
-                    # Calcula o resultado (quantidade * peso do procedimento)
-                    procedimento = formatted_row[6]
-                    quantidade = formatted_row[7]
-                    peso = self.procedure_weights.get(procedimento, 1)  # Peso padrão é 1 se não encontrado
-                    resultado = quantidade * peso
+                        # Formatar a primeira coluna como data (DD-MM-YYYY)
+                        if isinstance(formatted_row[0], str) and len(formatted_row[0]) > 10:
+                            date_parts = formatted_row[0][:10].split('-')  # 'YYYY-MM-DD'
+                            if len(date_parts) == 3:
+                                formatted_row[
+                                    0] = f"{date_parts[2]}-{date_parts[1]}-{date_parts[0]}"  # Formato DD-MM-YYYY
 
-                    # Formatar a primeira coluna como data (DD-MM-YYYY)
-                    if isinstance(formatted_row[0], str) and len(formatted_row[0]) > 10:
-                        date_parts = formatted_row[0][:10].split('-')  # 'YYYY-MM-DD'
-                        if len(date_parts) == 3:
-                            formatted_row[0] = f"{date_parts[2]}-{date_parts[1]}-{date_parts[0]}"  # Formato DD-MM-YYYY
+                        # Define a cor da linha com base na alternância
+                        row_color = row_color_1 if index % 2 == 0 else row_color_2
+                        self.results_tree.insert("", "end", values=formatted_row + [resultado], tags=('row',))
+                        self.results_tree.tag_configure('row', background=row_color)
 
-                    # Define a cor da linha com base na alternância
-                    row_color = row_color_1 if index % 2 == 0 else row_color_2
-                    self.results_tree.insert("", "end", values=formatted_row + [resultado], tags=('row',))
-                    self.results_tree.tag_configure('row', background=row_color)
-
-                    # Armazena o item original para busca
-                    self.original_tree_items.append(formatted_row + [resultado])
+                        # Armazena o item original para busca
+                        self.original_tree_items.append(formatted_row + [resultado])
 
     def load_all_procedures_for_admin(self):
         """Carrega os procedimentos de todos os fiscais e os insere na variável self.filtered_df"""
@@ -1583,6 +1638,8 @@ class App:
                 row_index += 1
 
         self.fiscal_results_tree.bind("<Double-1>", self.toggle_group)
+        self.fiscal_results_tree.update_idletasks()
+        self.add_motivo_column()
 
     def toggle_group(self, event):
         """Expande ou colapsa os procedimentos dentro de um grupo ao clicar no grupo."""
@@ -1618,23 +1675,28 @@ class App:
 
         result_rows = []
 
-        # Pergunta pela quantidade para cada procedimento selecionado
         for procedure in selected_procedures:
-            quantidade = simpledialog.askinteger("Quantidade",
-                                                 f"Insira a quantidade para o procedimento: '{procedure}'")
-            if quantidade is None:
-                return  # O usuário cancelou a entrada
+            # Se o procedimento for "CANCELADO", abrir uma janela para inserir o motivo
+            if procedure == "CANCELADO":
+                reason = self.ask_reason_for_cancellation()
+                if reason is None:  # Se o usuário cancelar a entrada
+                    return
 
-            peso = self.procedure_weights.get(procedure, 1)
-            resultado = quantidade * peso
-            result_row = list(self.selected_row) + [procedure, quantidade, resultado]
-            result_rows.append(result_row)
+                result_row = list(self.selected_row) + [procedure, 0, reason]
+                result_rows.append(result_row)
+                self.save_to_database(result_row, fiscal_destinatario, cancelado=True)
+            else:
+                quantidade = simpledialog.askinteger("Quantidade",
+                                                     f"Insira a quantidade para o procedimento: '{procedure}'")
+                if quantidade is None:
+                    return  # O usuário cancelou a entrada
 
-        # Salva cada linha de procedimento na tabela do fiscal destinatário
-        for result_row in result_rows:
-            self.save_to_database(result_row, fiscal_destinatario)
+                peso = self.procedure_weights.get(procedure, 1)
+                resultado = quantidade * peso
+                result_row = list(self.selected_row) + [procedure, quantidade, resultado]
+                result_rows.append(result_row)
+                self.save_to_database(result_row, fiscal_destinatario, cancelado=False)
 
-        # Limpa a seleção da Treeview principal
         selected_item = self.data_tree.selection()
         if selected_item:
             self.data_tree.delete(selected_item[0])
@@ -1644,6 +1706,28 @@ class App:
         self.load_fiscal_results()
         self.load_results()
         self.load_monthly_results()
+
+    def ask_reason_for_cancellation(self):
+        """Abre uma janela para o usuário inserir o motivo do cancelamento."""
+        reason_window = Toplevel(self.root)
+        reason_window.title("Motivo do Cancelamento")
+
+        Label(reason_window, text="Insira o motivo do cancelamento:").pack(padx=10, pady=10)
+
+        reason_entry = Entry(reason_window, width=50)
+        reason_entry.pack(padx=10, pady=5)
+
+        reason = None
+
+        def save_reason():
+            nonlocal reason
+            reason = reason_entry.get()
+            reason_window.destroy()
+
+        Button(reason_window, text="Salvar", command=save_reason).pack(pady=10)
+
+        reason_window.wait_window()  # Aguarda o fechamento da janela
+        return reason
 
     def export_fiscal_results(self, tree, export_type):
         # Capturar todos os dados visíveis na Treeview "Resultados Do Fiscal"
@@ -1909,25 +1993,197 @@ class App:
         pdf.build([table])
         messagebox.showinfo("Exportação Completa", f"Dados exportados para {filename}")
 
-    def save_to_database(self, row, fiscal_destinatario):
+    def save_to_database(self, row, fiscal_destinatario, cancelado=False):
         """Salva os dados na tabela de procedimentos do fiscal destinatário no banco de dados"""
         if not fiscal_destinatario:
             return
 
-        table_name = f'procedimentos_{fiscal_destinatario}'  # Usa o fiscal destinatário para a tabela
+        table_name = f'procedimentos_{fiscal_destinatario}'
         cursor = self.conn.cursor()
 
-        if len(row) != 9:
-            print(f"Erro: row deve ter 9 elementos, mas contém {len(row)}: {row}")
-            return
-
-        cursor.execute(f'''
-            INSERT INTO {table_name} (coluna_1, coluna_2, coluna_3, coluna_4, coluna_5, coluna_6, procedimento, quantidade)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        ''', (row[0], row[1], row[2], row[3], row[4], row[5], row[6], row[7]))
+        if cancelado:
+            cursor.execute(f'''
+                INSERT INTO {table_name} (coluna_1, coluna_2, coluna_3, coluna_4, coluna_5, coluna_6, procedimento, quantidade, motivo)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (row[0], row[1], row[2], row[3], row[4], row[5], row[6], row[7], row[8]))
+        else:
+            cursor.execute(f'''
+                INSERT INTO {table_name} (coluna_1, coluna_2, coluna_3, coluna_4, coluna_5, coluna_6, procedimento, quantidade)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (row[0], row[1], row[2], row[3], row[4], row[5], row[6], row[7]))
 
         self.conn.commit()
         print(f"Dados inseridos na tabela '{table_name}': {row}")
+
+    def setup_admin_tab(self):
+        # Configuração da aba de administração
+        tk.Label(self.admin_frame, text="Funções Administrativas", font=("Arial", 14, "bold")).pack(pady=10)
+
+        # Botão para zerar o banco de dados
+        reset_button = tk.Button(self.admin_frame, text="Zerar Banco de Dados", command=self.reset_database)
+        reset_button.pack(pady=5)
+
+        # Botão para alterar a senha de um usuário
+        change_password_button = tk.Button(self.admin_frame, text="Alterar Senha de Usuário",
+                                           command=self.change_user_password)
+        change_password_button.pack(pady=5)
+
+        # **Novo botão para excluir um usuário**
+        delete_user_button = tk.Button(self.admin_frame, text="Excluir Usuário", command=self.delete_user)
+        delete_user_button.pack(pady=5)
+
+    def delete_user(self):
+        # Solicita o nome do usuário a ser excluído
+        username = simpledialog.askstring("Excluir Usuário", "Digite o nome do usuário a ser excluído:")
+        if not username:
+            return
+
+        # Verifica se o usuário existe no banco de dados
+        cursor = self.conn.cursor()
+        cursor.execute("SELECT * FROM fiscals WHERE name=?", (username,))
+        user = cursor.fetchone()
+        if not user:
+            messagebox.showerror("Erro", "Usuário não encontrado!")
+            return
+
+        # Confirmação para exclusão do usuário
+        if not messagebox.askyesno("Confirmação", f"Tem certeza de que deseja excluir o usuário '{username}'?"):
+            return
+
+        # Exclui o usuário do banco de dados
+        cursor.execute("DELETE FROM fiscals WHERE name=?", (username,))
+        self.conn.commit()
+        messagebox.showinfo("Sucesso", f"Usuário '{username}' excluído com sucesso!")
+        self.fiscais = self.load_fiscais()  # Atualiza a lista de fiscais
+
+    def reset_database(self):
+        # Confirmação para zerar o banco de dados
+        if not messagebox.askyesno("Confirmação", "Tem certeza de que deseja zerar o banco de dados?"):
+            return
+
+        # Solicitação da senha do administrador
+        password_input = simpledialog.askstring("Senha do Administrador",
+                                                "Digite a senha do administrador para confirmar:", show='*')
+        if not password_input:
+            messagebox.showerror("Erro", "Ação cancelada: senha não informada.")
+            return
+
+        # Verifica a senha do administrador
+        cursor = self.conn.cursor()
+        cursor.execute("SELECT password FROM fiscals WHERE is_admin = 1")
+        admin_password = cursor.fetchone()
+
+        if not admin_password or password_input != admin_password[0]:
+            messagebox.showerror("Erro", "Senha do administrador incorreta.")
+            return
+
+        # Exclui dados dos procedimentos, quantidades, metas e grupos
+        try:
+            # Limpar os dados das tabelas de procedimentos de cada fiscal
+            for fiscal in self.fiscais:
+                table_name = f'procedimentos_{fiscal}'
+                cursor.execute(f"DELETE FROM {table_name}")
+
+            # Limpar a tabela de metas globais
+            cursor.execute("DELETE FROM metas_globais")
+
+            # Limpar a tabela de grupos de procedimentos
+            cursor.execute("DELETE FROM grupos_procedimentos")
+
+            self.conn.commit()
+            messagebox.showinfo("Sucesso",
+                                "Banco de dados zerado com sucesso (procedimentos, quantidades, metas e grupos foram excluídos).")
+
+        except Exception as e:
+            self.conn.rollback()
+            messagebox.showerror("Erro", f"Falha ao zerar o banco de dados: {e}")
+
+    def backup_database(self, file_path):
+        cursor = self.conn.cursor()
+        cursor.execute("SELECT * FROM fiscals")
+        rows = cursor.fetchall()
+        columns = [desc[0] for desc in cursor.description]
+
+        # Salva o backup em Excel
+        df = pd.DataFrame(rows, columns=columns)
+        df.to_excel(file_path, index=False)
+        messagebox.showinfo("Backup", f"Backup salvo em {file_path}")
+
+    def change_user_password(self):
+        # Solicita o nome do usuário
+        username = simpledialog.askstring("Alterar Senha", "Digite o nome do usuário:")
+        if not username:
+            return
+
+        # Verifica se o usuário existe
+        cursor = self.conn.cursor()
+        cursor.execute("SELECT * FROM fiscals WHERE name=?", (username,))
+        user = cursor.fetchone()
+        if not user:
+            messagebox.showerror("Erro", "Usuário não encontrado!")
+            return
+
+        # Solicita a nova senha
+        new_password = simpledialog.askstring("Nova Senha", "Digite a nova senha:", show="*")
+        if new_password and len(new_password) == 6:
+            cursor.execute("UPDATE fiscals SET password=? WHERE name=?", (new_password, username))
+            self.conn.commit()
+            messagebox.showinfo("Sucesso", "Senha alterada com sucesso!")
+        else:
+            messagebox.showerror("Erro", "A senha deve ter exatamente 6 caracteres.")
+
+    def edit_quantity(self):
+        """Abre uma janela para editar a quantidade do procedimento selecionado."""
+        selected_item = self.results_tree.focus()
+        if not selected_item:
+            messagebox.showwarning("Aviso", "Selecione um item para editar.")
+            return
+
+        # Obtém o valor atual da quantidade do item selecionado
+        item_values = self.results_tree.item(selected_item, "values")
+        current_quantity = item_values[7]  # Supondo que a quantidade está na coluna 7
+
+        # Janela para inserir a nova quantidade, sem referência principal
+        edit_window = Toplevel()
+        edit_window.title("Editar Quantidade")
+        edit_window.geometry("300x150")
+
+        Label(edit_window, text="Nova Quantidade:").pack(pady=10)
+        quantity_entry = Entry(edit_window)
+        quantity_entry.pack(pady=5)
+        quantity_entry.insert(0, current_quantity)  # Preenche com a quantidade atual
+
+        def save_new_quantity():
+            try:
+                new_quantity = int(quantity_entry.get())
+                # Atualizar no banco de dados
+                fiscal = item_values[2]  # Supondo que o nome do fiscal está na coluna 2
+                procedimento = item_values[6]  # Supondo que o procedimento está na coluna 6
+                table_name = f'procedimentos_{fiscal}'
+
+                cursor = self.conn.cursor()
+                cursor.execute(
+                    f"UPDATE {table_name} SET quantidade = ? WHERE procedimento = ? AND quantidade = ?",
+                    (new_quantity, procedimento, current_quantity)
+                )
+                self.conn.commit()
+
+                # Atualiza a Treeview com o novo valor
+                updated_values = list(item_values)
+                updated_values[7] = new_quantity
+                self.results_tree.item(selected_item, values=updated_values)
+
+                # Fecha a janela e mostra mensagem de sucesso
+                edit_window.destroy()
+                messagebox.showinfo("Sucesso", "Quantidade atualizada com sucesso.")
+
+            except ValueError:
+                messagebox.showerror("Erro", "Insira um valor numérico válido.")
+
+        # Botão para salvar a nova quantidade
+        Button(edit_window, text="Salvar", command=save_new_quantity).pack(pady=10)
+
+
 
     def close_db(self):
         self.conn.close()
