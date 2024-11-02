@@ -30,7 +30,7 @@ class App:
         self.root.iconbitmap("crc.ico")
 
         # Conexão com o banco de dados SQLite
-        self.conn = sqlite3.connect('fiscais.db')
+        self.conn = sqlite3.connect(r'\\srvsql\Banco Cursos\fiscais.db')
         self.create_table()
         atexit.register(self.close_db)  # Fecha o banco de dados ao sair do programa
 
