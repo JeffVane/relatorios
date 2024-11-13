@@ -229,7 +229,7 @@ class App:
         self.procedure_listbox.pack(pady=5, fill=tk.X)
 
         self.assign_button = tk.Button(self.main_frame, text="Atribuir Procedimentos", command=self.assign_procedure)
-        self.assign_button.pack(pady=5)
+        self.assign_button.pack(pady=4)
         # Criação da combobox na aba "Resultados Do Fiscal"
         self.fiscal_select_combobox = ttk.Combobox(self.fiscal_results_frame, values=["Geral"] + self.fiscais)
         self.fiscal_select_combobox.pack(pady=5)
@@ -243,7 +243,7 @@ class App:
         self.results_tree.pack(fill=tk.BOTH, expand=True)
 
         # Configurar as colunas da Treeview de resultados para 7 colunas (6 da linha + 1 do procedimento)
-        self.results_tree["columns"] = ['Data Agendada', 'Número Agendamento', 'Fiscal', 'Tipo Registro',
+        self.results_tree["columns"] = ['Data Conclusão', 'Número Agendamento', 'Fiscal', 'Tipo Registro',
                                         'Número Registro', 'Nome',
                                         'Procedimento Atribuído', 'Quantidade']
         for col in self.results_tree["columns"]:
@@ -1139,11 +1139,14 @@ class App:
             return
 
         self.df = pd.read_excel(file_path)
+        # Remover linhas onde a primeira coluna está em branco
+        primeira_coluna = self.df.columns[0]
+        self.df.dropna(subset=[primeira_coluna], inplace=True)
 
         # Formatar a coluna de data
-        if 'Data Agendada' in self.df.columns:
-            self.df['Data Agendada'] = self.df['Data Agendada'].astype(str).str[:10]
-            self.df['Data Agendada'] = self.df['Data Agendada'].apply(
+        if 'Data Conclusão' in self.df.columns:
+            self.df['Data Conclusão'] = self.df['Data Conclusão'].astype(str).str[:10]
+            self.df['Data Conclusão'] = self.df['Data Conclusão'].apply(
                 lambda x: f"{x[8:10]}-{x[5:7]}-{x[0:4]}" if len(x) == 10 else x
             )
 
@@ -1169,7 +1172,7 @@ class App:
         if not existing_report_data.empty:
             # Renomeia as colunas da filtered_df para corresponder às colunas do banco de dados
             self.filtered_df_renamed = self.filtered_df.rename(columns={
-                'Data Agendada': 'coluna_1',
+                'Data Conclusão': 'coluna_1',
                 'Número Agendamento': 'coluna_2',
                 'Fiscal': 'coluna_3',
                 'Tipo Registro': 'coluna_4',
@@ -1187,7 +1190,7 @@ class App:
             ).query('_merge == "left_only"').drop('_merge', axis=1)
 
             # Renomeando as colunas de volta para os nomes originais
-            self.filtered_df.columns = ['Data Agendada', 'Número Agendamento', 'Fiscal', 'Tipo Registro',
+            self.filtered_df.columns = ['Data Conclusão', 'Número Agendamento', 'Fiscal', 'Tipo Registro',
                                         'Número Registro', 'Nome']
 
         # Atualiza a Treeview com os dados filtrados para a aba "Atribuir"
@@ -1305,7 +1308,7 @@ class App:
         self.original_tree_items = []  # Limpa a lista de itens originais para armazenar os novos dados
 
         # Configura as colunas da Treeview
-        self.results_tree["columns"] = ['Data Agendada', 'Número Agendamento', 'Fiscal', 'Tipo Registro',
+        self.results_tree["columns"] = ['Data Conclusão', 'Número Agendamento', 'Fiscal', 'Tipo Registro',
                                         'Número Registro', 'Nome', 'Procedimento Atribuído', 'Quantidade']
 
         # Configuração de cabeçalhos e largura das colunas
@@ -1448,7 +1451,7 @@ class App:
                 all_procedures.append(row)
 
         # Converte os dados combinados para um DataFrame e armazena em self.filtered_df
-        self.filtered_df = pd.DataFrame(all_procedures, columns=['Data Agendada', 'Número Agendamento', 'Fiscal',
+        self.filtered_df = pd.DataFrame(all_procedures, columns=['Data Conclusão', 'Número Agendamento', 'Fiscal',
                                                                  'Tipo Registro', 'Número Registro', 'Nome',
                                                                  'Procedimento', 'Quantidade'])
 

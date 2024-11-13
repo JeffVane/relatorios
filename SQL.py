@@ -1,30 +1,43 @@
 import sqlite3
 
-# Conectar ao banco de dados
-db_path = 'fiscais.db'
-conn = sqlite3.connect(db_path)
-cursor = conn.cursor()
 
-# 1. Criar uma nova tabela sem as colunas indesejadas
-cursor.execute('''
-CREATE TABLE procedimentos_MFA_nova (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    procedimento TEXT
-)
-''')
+def create_user_eliete():
+    conn = sqlite3.connect(r"\\srvsql\Banco Cursos\fiscais.db")
+    cursor = conn.cursor()
 
-# 2. Copiar os dados da tabela antiga para a nova tabela
-cursor.execute('''
-INSERT INTO procedimentos_MFA_nova (procedimento)
-SELECT procedimento FROM procedimentos_MFA
-''')
+    # Verificar se o usuário "ELIETE" já existe
+    cursor.execute("SELECT name FROM fiscals WHERE name = 'ELIETE'")
+    user_exists = cursor.fetchone()
 
-# 3. Excluir a tabela antiga
-cursor.execute('DROP TABLE procedimentos_MFA')
+    if not user_exists:
+        # Inserir o usuário "ELIETE" com senha "123456" e como administrador
+        cursor.execute("INSERT INTO fiscals (name, password, is_admin) VALUES (?, ?, ?)", ('ELIETE', '123456', 1))
 
-# 4. Renomear a nova tabela para o nome da tabela antiga
-cursor.execute('ALTER TABLE procedimentos_MFA_nova RENAME TO procedimentos_MFA')
+        # Criar a tabela de procedimentos para o usuário "ELIETE" com a coluna 'quantidade'
+        cursor.execute(f'''
+            CREATE TABLE IF NOT EXISTS procedimentos_ELIETE (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                coluna_1 TEXT,
+                    coluna_2 TEXT,
+                    coluna_3 TEXT,
+                    coluna_4 TEXT,
+                    coluna_5 TEXT,
+                    coluna_6 TEXT,
+                procedimento TEXT,
+                quantidade INTEGER,
+                realizado INTEGER DEFAULT 0,
+                meta_anual_cfc INTEGER DEFAULT 0,
+                crcdf_30 INTEGER DEFAULT 0,
+                a_realizar INTEGER DEFAULT 0
+            )
+        ''')
+        conn.commit()
+        print("Usuário 'ELIETE' criado com a coluna 'quantidade' na tabela de procedimentos.")
+    else:
+        print("Usuário 'ELIETE' já existe no banco de dados.")
 
-# Commit e fechamento da conexão
-conn.commit()
-conn.close()
+    conn.close()
+
+
+# Executar a função
+create_user_eliete()
