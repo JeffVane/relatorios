@@ -30,7 +30,7 @@ class App:
         self.root.iconbitmap("crc.ico")
 
         # Conexão com o banco de dados SQLite
-        self.conn = sqlite3.connect(r'\\srvsql\Banco Cursos\fiscais.db')
+        self.conn = sqlite3.connect(r'\\srvsql\Banco fisc\fiscais.db')
         self.create_table()
         atexit.register(self.close_db)  # Fecha o banco de dados ao sair do programa
 
@@ -99,8 +99,10 @@ class App:
         self.search_entry.pack(side=tk.TOP, fill=tk.X, padx=10, pady=5)
         self.search_entry.bind("<KeyRelease>", self.update_report_search)
         # Adicione este botão ao layout da aba "Relatório"
-        Button(self.results_frame, text="Editar Quantidade", command=self.edit_quantity).pack(pady=5)
-
+        Button(self.results_frame, text="Editar Quantidade", command=self.edit_quantity).place(x=120,y=65)
+        Button(self.results_frame, text="Excluir Agendamento", foreground="red", command=self.delete_agendamento).pack(pady=5)
+        # Botão para editar o procedimento atribuído
+        Button(self.results_frame, text="Editar Procedimento Atribuído",command=self.edit_assigned_procedure).place(x=1550,y=65)
         # Mensal
 
         # Configurar a Treeview para exibir os resultados mensais
@@ -234,6 +236,9 @@ class App:
         self.fiscal_select_combobox = ttk.Combobox(self.fiscal_results_frame, values=["Geral"] + self.fiscais)
         self.fiscal_select_combobox.pack(pady=5)
 
+        self.agendamentos_count_label = tk.Label(self.main_frame, text="Total de Agendamentos: 0")
+        self.agendamentos_count_label.pack(pady=10)
+
         # Oculta a combobox logo após sua criação
         self.fiscal_select_combobox.pack_forget()
 
@@ -256,6 +261,14 @@ class App:
                 self.results_tree.column(col, anchor="center")
             # Evento para detectar mudança de aba
             self.notebook.bind("<<NotebookTabChanged>>", self.on_tab_change)
+
+    def update_agendamentos_count(self):
+        """Atualiza a contagem de agendamentos na aba 'Atribuir'."""
+        count = len(self.data_tree.get_children())
+        self.agendamentos_count_label.config(text=f"Total de Agendamentos: {count}")
+
+
+    # Chame também após adicionar ou remover um agendamento
 
     def on_tab_change(self, event):
         # Obtém a aba selecionada
@@ -1216,6 +1229,7 @@ class App:
             self.update_treeview(self.data_tree, self.filtered_df)
             self.load_fiscal_results_for_admin()
 
+
     def load_attribuir_data(self):
         """Carrega os dados na aba 'Atribuir', ocultando agendamentos já atribuídos nas tabelas de procedimentos de cada usuário."""
 
@@ -1260,6 +1274,7 @@ class App:
             self.data_tree.insert("", "end", values=formatted_row)
             # Evento para detectar mudança de aba
             self.notebook.bind("<<NotebookTabChanged>>", self.on_tab_change)
+            self.update_agendamentos_count()
 
     def load_existing_report_data(self, fiscal_name):
         """Carrega os dados existentes na aba Relatório do banco de dados para o fiscal logado"""
@@ -1687,6 +1702,126 @@ class App:
         self.load_fiscal_results()
         self.load_results()
         self.load_monthly_results()
+        self.update_agendamentos_count()
+
+    def edit_assigned_procedure(self):
+        """Edita o procedimento atribuído na linha selecionada da Treeview."""
+        # Verifica se uma linha está selecionada
+        selected_item = self.results_tree.selection()
+        if not selected_item:
+            messagebox.showwarning("Aviso", "Selecione uma linha para editar!")
+            return
+
+        # Obtem os valores da linha selecionada
+        selected_values = self.results_tree.item(selected_item, "values")
+        if not selected_values:
+            messagebox.showwarning("Aviso", "Linha selecionada não contém dados válidos!")
+            return
+
+        # Abrir uma janela para edição
+        edit_window = tk.Toplevel(self.root)
+        edit_window.title("Editar Procedimento Atribuído")
+        edit_window.geometry("850x300")  # Aumente o tamanho da janela para maior conforto
+
+        # Campo para o novo procedimento
+        tk.Label(edit_window, text="Novo Procedimento:", font=("Arial", 12)).pack(pady=10)
+        procedure_combobox = ttk.Combobox(edit_window, values=list(self.procedure_weights.keys()), state='readonly',
+                                          font=("Arial", 12), width=90)
+        procedure_combobox.pack(pady=10)
+        procedure_combobox.set(selected_values[6])  # Valor atual do procedimento
+
+        # Campo para nova quantidade
+        tk.Label(edit_window, text="Nova Quantidade:", font=("Arial", 12)).pack(pady=10)
+        quantity_entry = tk.Entry(edit_window, font=("Arial", 12), width=15)
+        quantity_entry.pack(pady=10)
+        quantity_entry.insert(0, selected_values[7])  # Valor atual da quantidade
+
+        def save_changes():
+            # Validações básicas
+            new_procedure = procedure_combobox.get()
+            try:
+                new_quantity = int(quantity_entry.get())
+            except ValueError:
+                messagebox.showerror("Erro", "A quantidade deve ser um número inteiro!")
+                return
+
+            if not new_procedure:
+                messagebox.showerror("Erro", "Por favor, selecione um procedimento.")
+                return
+
+            # Atualiza os valores no banco de dados
+            table_name = f'procedimentos_{selected_values[2]}'
+            cursor = self.conn.cursor()
+            cursor.execute(f"""
+                UPDATE {table_name}
+                SET procedimento = ?, quantidade = ?
+                WHERE coluna_1 = ? AND coluna_2 = ? AND procedimento = ?
+            """, (new_procedure, new_quantity, selected_values[0], selected_values[1], selected_values[6]))
+            self.conn.commit()
+
+            # Atualiza os valores na Treeview
+            peso = self.procedure_weights.get(new_procedure, 1)
+            new_resultado = new_quantity * peso
+            updated_values = list(selected_values)
+            updated_values[6] = new_procedure  # Atualiza o procedimento
+            updated_values[7] = new_quantity  # Atualiza a quantidade
+            updated_values.append(new_resultado)  # Atualiza o resultado
+            self.results_tree.item(selected_item, values=updated_values)
+
+            # Fecha a janela de edição
+            edit_window.destroy()
+            messagebox.showinfo("Sucesso", "Procedimento atualizado com sucesso!")
+
+        # Botão para salvar as alterações
+        save_button = tk.Button(edit_window, text="Salvar Alterações", font=("Arial", 12), command=save_changes)
+        save_button.pack(pady=20)
+
+    def delete_agendamento(self):
+        """Exclui o agendamento selecionado na Treeview da aba 'Relatório' e remove do banco de dados."""
+        # Obter a linha selecionada
+        selected_item = self.results_tree.selection()
+        if not selected_item:
+            messagebox.showwarning("Aviso", "Selecione um agendamento para excluir!")
+            return
+
+        # Capturar os valores da linha selecionada
+        selected_values = self.results_tree.item(selected_item, "values")
+
+        if not selected_values:
+            messagebox.showwarning("Aviso", "Linha selecionada não contém dados válidos!")
+            return
+
+        # Confirmar exclusão
+        confirm = messagebox.askyesno("Confirmação", "Tem certeza de que deseja excluir este agendamento?")
+        if not confirm:
+            return
+
+        # Capturar valores específicos para identificação no banco de dados
+        data_conclusao = selected_values[0]
+        numero_agendamento = selected_values[1]
+        fiscal = selected_values[2]
+        procedimento = selected_values[6]
+
+        # Excluir do banco de dados
+        table_name = f'procedimentos_{fiscal}'
+        cursor = self.conn.cursor()
+
+        try:
+            cursor.execute(
+                f"""
+                DELETE FROM {table_name}
+                WHERE coluna_1 = ? AND coluna_2 = ? AND procedimento = ?
+                """,
+                (data_conclusao, numero_agendamento, procedimento)
+            )
+            self.conn.commit()
+            messagebox.showinfo("Sucesso", "Agendamento excluído com sucesso!")
+
+            # Remover a linha da Treeview
+            self.results_tree.delete(selected_item)
+        except Exception as e:
+            messagebox.showerror("Erro", f"Erro ao excluir agendamento: {e}")
+            self.update_agendamentos_count()
 
     def ask_reason_for_cancellation(self):
         """Abre uma janela para o usuário inserir o motivo do cancelamento."""
