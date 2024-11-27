@@ -1037,7 +1037,7 @@ class App:
     def load_data(self):
         fiscal_name = self.fiscal_combobox.get().upper()  # Converte para maiúsculas
         if not fiscal_name:
-            messagebox.showwarning("Atenção", "Escolha um fiscal antes de carregar a planilha.")
+            messagebox.showwarning("Atenção", "Escolha um fiscal antes de continuar.")
             return
 
         # Solicitar a senha
@@ -1064,88 +1064,43 @@ class App:
         # Define se o usuário logado é administrador
         self.is_admin = is_admin == 1
 
-        # Botão para carregar os resultados do fiscal selecionado
-        #self.load_fiscal_results_button = tk.Button(self.fiscal_results_frame, text="Atualizar Resultados",command=self.load_fiscal_results_for_admin)
-        #self.load_fiscal_results_button.pack(side="left", padx=5, pady=5)
+        # Remove o frame de login
+        self.login_frame.grid_forget()
+        self.current_fiscal = fiscal_name
 
-        # Adicionar botões de exportação apenas para administradores
+        # Informar o tipo de usuário logado
         if self.is_admin:
-            # Frame para organizar os botões de exportação na aba "Resultado Mensal"
-            export_monthly_frame = tk.Frame(self.resultado_mensal_frame)
-            export_monthly_frame.pack(pady=5)
+            messagebox.showinfo("Administrador", "Você está logado como administrador.")
+        else:
+            messagebox.showinfo("Usuário", "Você está logado como usuário.")
 
-            # Botão para exportar o conteúdo para PDF na aba Resultado Mensal
-            export_monthly_pdf_button = tk.Button(export_monthly_frame, text="Exportar para PDF",
-                                                  command=lambda: self.export_monthly_results(self.monthly_tree, "pdf"),
-                                                  bg="light blue", fg="black")
-            export_monthly_pdf_button.pack(side="left", padx=5)
+        # Carregar dados existentes do banco de dados
+        self.load_existing_data_from_db(fiscal_name)
 
-            # Botão para exportar o conteúdo para Excel na aba Resultado Mensal
-            export_monthly_excel_button = tk.Button(export_monthly_frame, text="Exportar para Excel",
-                                                    command=lambda: self.export_monthly_results(self.monthly_tree,
-                                                                                                "excel"),
-                                                    bg="light green", fg="black")
-            export_monthly_excel_button.pack(side="left", padx=5)
+        # Adicionar botão para carregar a planilha posteriormente
+        self.add_load_spreadsheet_button()
 
-            # Frame para organizar os botões de exportação na aba "Relatório"
-            export_report_frame = tk.Frame(self.results_frame)
-            export_report_frame.pack(pady=5, padx=30)
+    def load_existing_data_from_db(self, fiscal_name):
+        """Carrega os dados do banco de dados para inicializar a aplicação, se disponíveis."""
+        # Carregar dados existentes na aba Relatório
+        self.load_results()  # Carrega os resultados da tabela do fiscal logado
 
-            # Botão para exportar o conteúdo filtrado para PDF na aba Relatório
-            self.export_report_pdf_button = tk.Button(export_report_frame, text="Exportar Filtrado para PDF",
-                                                      command=self.export_filtered_pdf, bg="light blue", fg="black")
-            self.export_report_pdf_button.pack(side="left", padx=5)
+        # Carregar resultados do banco de dados para a aba 'Resultados do Fiscal'
+        self.load_fiscal_results()
 
-            # Botão para exportar o conteúdo filtrado para Excel na aba Relatório
-            self.export_report_excel_button = tk.Button(export_report_frame, text="Exportar Filtrado para Excel",
-                                                        command=self.export_filtered_excel, bg="light green",
-                                                        fg="black")
-            self.export_report_excel_button.pack(side="left", padx=5)
+    def add_load_spreadsheet_button(self):
+        """Adiciona um botão para carregar a planilha após o login."""
+        load_spreadsheet_button = tk.Button(
+            self.main_frame,
+            text="Carregar Planilha",
+            command=self.load_spreadsheet,
+            bg="light blue",
+            fg="black"
+        )
+        load_spreadsheet_button.pack(side="top", pady=5)
 
-            # Frame para organizar os botões de exportação na aba 'Resultados do Fiscal'
-            export_fiscal_frame = tk.Frame(self.fiscal_results_frame)
-            export_fiscal_frame.pack(pady=5, padx=30)
-
-            # Botão para exportar o conteúdo filtrado para PDF na aba Resultados Do Fiscal
-            export_fiscal_pdf_button = tk.Button(export_fiscal_frame, text="Exportar para PDF",
-                                                 command=lambda: self.export_fiscal_results(self.fiscal_results_tree,
-                                                                                            "pdf"),
-                                                 bg="light blue", fg="black")
-            export_fiscal_pdf_button.pack(side="left", padx=5)
-
-            # Botão para exportar o conteúdo filtrado para Excel na aba Resultados Do Fiscal
-            export_fiscal_excel_button = tk.Button(export_fiscal_frame, text="Exportar para Excel",
-                                                   command=lambda: self.export_fiscal_results(self.fiscal_results_tree,
-                                                                                              "excel"),
-                                                   bg="light green", fg="black")
-            export_fiscal_excel_button.pack(side="left", padx=5)
-
-            # Frame para organizar os botões "Agrupar" e "Desagrupar" na aba Resultados do Fiscal
-            group_buttons_frame = tk.Frame(self.fiscal_results_frame)
-            group_buttons_frame.pack(pady=5)
-
-            # Botão Agrupar na aba Resultados Do Fiscal
-            self.agrupar_button = tk.Button(group_buttons_frame, text="Agrupar", command=self.abrir_janela_agrupar,
-                                            bg="light coral", fg="white")
-            self.agrupar_button.pack(side="left", padx=5)
-
-            # Botão Desagrupar na aba Resultados Do Fiscal
-            self.desagrupar_button = tk.Button(group_buttons_frame, text="Desagrupar",
-                                               command=self.desagrupar_procedimentos,
-                                               bg="light slate gray", fg="white")
-            self.desagrupar_button.pack(side="left", padx=5)
-
-
-
-        # Verifica se é administrador para exibir a aba adicional
-        if self.is_admin:
-            self.admin_frame = ttk.Frame(self.notebook)
-            self.notebook.add(self.admin_frame, text="Administração")
-            self.setup_admin_tab()
-
-        # Chamar a função para criar a combobox na aba "Resultado Mensal" para todos os usuários
-        self.create_admin_combobox_for_monthly_results()
-
+    def load_spreadsheet(self):
+        """Carrega a planilha Excel e atualiza os dados da aplicação."""
         # Abrir o arquivo Excel
         file_path = filedialog.askopenfilename(filetypes=[("Excel files", "*.xlsx")])
         if not file_path:
@@ -1165,21 +1120,21 @@ class App:
 
         # Se o usuário logado não for administrador, filtrar os dados apenas para o fiscal logado
         if not self.is_admin:
-            if fiscal_name not in self.df['Fiscal'].values:
+            if self.current_fiscal not in self.df['Fiscal'].values:
                 messagebox.showerror("Erro", "Fiscal não encontrado na planilha!")
                 return
 
             # Filtra o DataFrame para obter apenas as linhas para o fiscal logado
-            self.filtered_df = self.df[self.df['Fiscal'] == fiscal_name]
+            self.filtered_df = self.df[self.df['Fiscal'] == self.current_fiscal]
         else:
             # Administrador tem acesso a todos os dados
             self.filtered_df = self.df
 
         # Atualiza a Treeview com os dados filtrados para a aba "Atribuir"
-        self.load_attribuir_data()  # Adiciona a função aqui para carregar os dados na aba Atribuir
+        self.load_attribuir_data()
 
         # Carregar dados existentes na aba Relatório
-        existing_report_data = self.load_existing_report_data(fiscal_name)
+        existing_report_data = self.load_existing_report_data(self.current_fiscal)
 
         # Remove as linhas que já estão no Relatório
         if not existing_report_data.empty:
@@ -1209,25 +1164,8 @@ class App:
         # Atualiza a Treeview com os dados filtrados para a aba "Atribuir"
         self.update_treeview(self.data_tree, self.filtered_df)
 
-        # Remove o frame de login
-        self.login_frame.grid_forget()
-        self.current_fiscal = fiscal_name
+        messagebox.showinfo("Sucesso", "Planilha carregada com sucesso!")
 
-        # Carregar resultados do banco de dados para a aba Relatório
-        self.load_results()  # Carrega os resultados da tabela do fiscal logado
-
-        # **Carregar e calcular os resultados para a aba "Resultados do Fiscal"**
-        self.load_fiscal_results()  # Executa o cálculo automaticamente para a aba Resultados do Fiscal
-        self.load_fiscal_results_for_admin()
-
-        # Informar o tipo de usuário logado
-        if self.is_admin:
-            messagebox.showinfo("Administrador", "Você está logado como administrador.")
-        else:
-            messagebox.showinfo("Usuário", "Você está logado como usuário.")
-            # Exemplo de uso para carregar dados com alternância de cor
-            self.update_treeview(self.data_tree, self.filtered_df)
-            self.load_fiscal_results_for_admin()
 
 
     def load_attribuir_data(self):
@@ -1705,14 +1643,14 @@ class App:
         self.update_agendamentos_count()
 
     def edit_assigned_procedure(self):
-        """Edita o procedimento atribuído na linha selecionada da Treeview."""
+        """Edita apenas o procedimento atribuído na linha selecionada da Treeview."""
         # Verifica se uma linha está selecionada
         selected_item = self.results_tree.selection()
         if not selected_item:
             messagebox.showwarning("Aviso", "Selecione uma linha para editar!")
             return
 
-        # Obtem os valores da linha selecionada
+        # Obtém os valores da linha selecionada
         selected_values = self.results_tree.item(selected_item, "values")
         if not selected_values:
             messagebox.showwarning("Aviso", "Linha selecionada não contém dados válidos!")
@@ -1721,29 +1659,23 @@ class App:
         # Abrir uma janela para edição
         edit_window = tk.Toplevel(self.root)
         edit_window.title("Editar Procedimento Atribuído")
-        edit_window.geometry("850x300")  # Aumente o tamanho da janela para maior conforto
+        edit_window.geometry("850x200")  # Tamanho reduzido já que não há campo de quantidade
 
         # Campo para o novo procedimento
         tk.Label(edit_window, text="Novo Procedimento:", font=("Arial", 12)).pack(pady=10)
-        procedure_combobox = ttk.Combobox(edit_window, values=list(self.procedure_weights.keys()), state='readonly',
-                                          font=("Arial", 12), width=90)
+        procedure_combobox = ttk.Combobox(
+            edit_window,
+            values=list(self.procedure_weights.keys()),
+            state='readonly',
+            font=("Arial", 12),
+            width=90
+        )
         procedure_combobox.pack(pady=10)
         procedure_combobox.set(selected_values[6])  # Valor atual do procedimento
 
-        # Campo para nova quantidade
-        tk.Label(edit_window, text="Nova Quantidade:", font=("Arial", 12)).pack(pady=10)
-        quantity_entry = tk.Entry(edit_window, font=("Arial", 12), width=15)
-        quantity_entry.pack(pady=10)
-        quantity_entry.insert(0, selected_values[7])  # Valor atual da quantidade
-
         def save_changes():
-            # Validações básicas
+            # Validação básica
             new_procedure = procedure_combobox.get()
-            try:
-                new_quantity = int(quantity_entry.get())
-            except ValueError:
-                messagebox.showerror("Erro", "A quantidade deve ser um número inteiro!")
-                return
 
             if not new_procedure:
                 messagebox.showerror("Erro", "Por favor, selecione um procedimento.")
@@ -1754,17 +1686,16 @@ class App:
             cursor = self.conn.cursor()
             cursor.execute(f"""
                 UPDATE {table_name}
-                SET procedimento = ?, quantidade = ?
+                SET procedimento = ?
                 WHERE coluna_1 = ? AND coluna_2 = ? AND procedimento = ?
-            """, (new_procedure, new_quantity, selected_values[0], selected_values[1], selected_values[6]))
+            """, (new_procedure, selected_values[0], selected_values[1], selected_values[6]))
             self.conn.commit()
 
             # Atualiza os valores na Treeview
             peso = self.procedure_weights.get(new_procedure, 1)
-            new_resultado = new_quantity * peso
+            new_resultado = int(selected_values[7]) * peso  # Mantém a quantidade original
             updated_values = list(selected_values)
             updated_values[6] = new_procedure  # Atualiza o procedimento
-            updated_values[7] = new_quantity  # Atualiza a quantidade
             updated_values.append(new_resultado)  # Atualiza o resultado
             self.results_tree.item(selected_item, values=updated_values)
 
