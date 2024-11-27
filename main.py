@@ -1064,6 +1064,82 @@ class App:
         # Define se o usuário logado é administrador
         self.is_admin = is_admin == 1
 
+        # Adicionar botões de exportação apenas para administradores
+        if self.is_admin:
+            # Frame para organizar os botões de exportação na aba "Resultado Mensal"
+            export_monthly_frame = tk.Frame(self.resultado_mensal_frame)
+            export_monthly_frame.pack(pady=5)
+
+            # Botão para exportar o conteúdo para PDF na aba Resultado Mensal
+            export_monthly_pdf_button = tk.Button(export_monthly_frame, text="Exportar para PDF",
+                                                  command=lambda: self.export_monthly_results(self.monthly_tree, "pdf"),
+                                                  bg="light blue", fg="black")
+            export_monthly_pdf_button.pack(side="left", padx=5)
+
+            # Botão para exportar o conteúdo para Excel na aba Resultado Mensal
+            export_monthly_excel_button = tk.Button(export_monthly_frame, text="Exportar para Excel",
+                                                    command=lambda: self.export_monthly_results(self.monthly_tree,
+                                                                                                "excel"),
+                                                    bg="light green", fg="black")
+            export_monthly_excel_button.pack(side="left", padx=5)
+
+            # Frame para organizar os botões de exportação na aba "Relatório"
+            export_report_frame = tk.Frame(self.results_frame)
+            export_report_frame.pack(pady=5, padx=30)
+
+            # Botão para exportar o conteúdo filtrado para PDF na aba Relatório
+            self.export_report_pdf_button = tk.Button(export_report_frame, text="Exportar Filtrado para PDF",
+                                                      command=self.export_filtered_pdf, bg="light blue", fg="black")
+            self.export_report_pdf_button.pack(side="left", padx=5)
+
+            # Botão para exportar o conteúdo filtrado para Excel na aba Relatório
+            self.export_report_excel_button = tk.Button(export_report_frame, text="Exportar Filtrado para Excel",
+                                                        command=self.export_filtered_excel, bg="light green",
+                                                        fg="black")
+            self.export_report_excel_button.pack(side="left", padx=5)
+
+            # Frame para organizar os botões de exportação na aba 'Resultados do Fiscal'
+            export_fiscal_frame = tk.Frame(self.fiscal_results_frame)
+            export_fiscal_frame.pack(pady=5, padx=30)
+
+            # Botão para exportar o conteúdo filtrado para PDF na aba Resultados Do Fiscal
+            export_fiscal_pdf_button = tk.Button(export_fiscal_frame, text="Exportar para PDF",
+                                                 command=lambda: self.export_fiscal_results(self.fiscal_results_tree,
+                                                                                            "pdf"),
+                                                 bg="light blue", fg="black")
+            export_fiscal_pdf_button.pack(side="left", padx=5)
+
+            # Botão para exportar o conteúdo filtrado para Excel na aba Resultados Do Fiscal
+            export_fiscal_excel_button = tk.Button(export_fiscal_frame, text="Exportar para Excel",
+                                                   command=lambda: self.export_fiscal_results(self.fiscal_results_tree,
+                                                                                              "excel"),
+                                                   bg="light green", fg="black")
+            export_fiscal_excel_button.pack(side="left", padx=5)
+
+            # Frame para organizar os botões "Agrupar" e "Desagrupar" na aba Resultados do Fiscal
+            group_buttons_frame = tk.Frame(self.fiscal_results_frame)
+            group_buttons_frame.pack(pady=5)
+
+            # Botão Agrupar na aba Resultados Do Fiscal
+            self.agrupar_button = tk.Button(group_buttons_frame, text="Agrupar", command=self.abrir_janela_agrupar,
+                                            bg="light coral", fg="white")
+            self.agrupar_button.pack(side="left", padx=5)
+
+            # Botão Desagrupar na aba Resultados Do Fiscal
+            self.desagrupar_button = tk.Button(group_buttons_frame, text="Desagrupar",
+                                               command=self.desagrupar_procedimentos,
+                                               bg="light slate gray", fg="white")
+            self.desagrupar_button.pack(side="left", padx=5)
+
+        # Verifica se é administrador para exibir a aba adicional
+        if self.is_admin:
+            self.admin_frame = ttk.Frame(self.notebook)
+            self.notebook.add(self.admin_frame, text="Administração")
+            self.setup_admin_tab()
+
+        # Chamar a função para criar a combobox na aba "Resultado Mensal" para todos os usuários
+        self.create_admin_combobox_for_monthly_results()
+
         # Remove o frame de login
         self.login_frame.grid_forget()
         self.current_fiscal = fiscal_name
@@ -1848,48 +1924,84 @@ class App:
         messagebox.showinfo("Exportação Completa", f"Dados exportados para {filename}")
 
     def export_monthly_results(self, tree, export_type):
-        # Capturar todos os dados visíveis na Treeview "Resultado Mensal"
-        data = [tree.item(item)["values"] for item in tree.get_children()]
+        """Exporta os dados visíveis na Treeview de resultados mensais."""
+        # Capturar todos os dados visíveis na Treeview
+        data = []
+        headers = [tree.heading(col)["text"] for col in tree["columns"]]  # Cabeçalhos da Treeview
+        data.append(headers)  # Adicionar cabeçalhos
+
+        for item in tree.get_children():
+            row = tree.item(item)["values"]
+            data.append(row)
 
         # Verificar se há dados para exportar
-        if not data:
+        if len(data) <= 1:  # Só cabeçalhos
             messagebox.showwarning("Aviso", "Não há dados para exportar.")
             return
 
-        # Confirmar o tipo de exportação e chamar a função correspondente
+        # Exportar conforme o tipo escolhido
         if export_type == "pdf":
             self.export_monthly_to_pdf(data)
         elif export_type == "excel":
             self.export_monthly_to_excel(data)
 
-    def export_monthly_to_pdf(data, filename="resultado_mensal.pdf"):
-        # Configura o documento PDF
-        pdf = SimpleDocTemplate(filename, pagesize=A4)
-        elements = []
+    def export_monthly_to_pdf(self, data):
+        """Exporta os dados da Treeview de resultados mensais para um arquivo PDF com ajustes para caber no layout."""
+        if not data:
+            messagebox.showwarning("Aviso", "Não há dados para exportar.")
+            return
 
-        # Obtém os dados do DataFrame para a tabela
-        data_frame = pd.DataFrame(data)  # Converte para DataFrame se necessário
-        table_data = [data_frame.columns.to_list()] + data_frame.values.tolist()  # Cabeçalhos + dados
+        # Escolher o local para salvar o arquivo
+        filename = filedialog.asksaveasfilename(
+            defaultextension=".pdf",
+            filetypes=[("PDF files", "*.pdf")],
+            title="Salvar arquivo como"
+        )
+        if not filename:
+            return  # Cancelamento do salvamento
 
-        # Configura a tabela para o PDF
-        table = Table(table_data)
+        # Configuração do documento
+        pdf = SimpleDocTemplate(
+            filename,
+            pagesize=landscape(A4),  # Orientação paisagem
+            leftMargin=20,
+            rightMargin=20,
+            topMargin=20,
+            bottomMargin=20
+        )
+
+        # Preparação dos dados
+        wrapped_data = []
+        max_column_widths = [150] + [50] * (len(data[0]) - 2) + [75]  # Larguras aproximadas
+
+        # Quebrar cabeçalhos e células longas
+        for row in data:
+            wrapped_row = [
+                textwrap.fill(str(cell), width=30 if i == 0 else 10)
+                for i, cell in enumerate(row)
+            ]
+            wrapped_data.append(wrapped_row)
+
+        # Estilo da tabela
+        table = Table(wrapped_data, colWidths=max_column_widths)
         table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.grey),  # Cabeçalho em cinza
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('FONTSIZE', (0, 0), (-1, 0), 10),
-            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-            ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
-            ('GRID', (0, 0), (-1, -1), 1, colors.black),
+            ('BACKGROUND', (0, 0), (-1, 0), colors.grey),  # Fundo do cabeçalho
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),  # Cor do texto do cabeçalho
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),  # Centralizar texto
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),  # Fonte do cabeçalho
+            ('FONTSIZE', (0, 0), (-1, 0), 8),  # Tamanho da fonte do cabeçalho
+            ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),  # Fonte do corpo
+            ('FONTSIZE', (0, 1), (-1, -1), 7),  # Tamanho da fonte do corpo
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.black),  # Grade
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE')  # Alinhamento vertical
         ]))
 
-        # Adiciona a tabela ao documento PDF
-        elements.append(table)
-
-        # Salva o PDF
-        pdf.build(elements)
-        print(f"Arquivo PDF '{filename}' exportado com sucesso.")
+        # Geração do PDF
+        try:
+            pdf.build([table])
+            messagebox.showinfo("Sucesso", f"Arquivo PDF salvo com sucesso em: {filename}")
+        except Exception as e:
+            messagebox.showerror("Erro", f"Ocorreu um erro ao salvar o PDF: {e}")
 
     def export_monthly_to_excel(self, data):
         # Caminho para salvar o arquivo Excel
