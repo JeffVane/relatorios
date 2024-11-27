@@ -30,7 +30,7 @@ class App:
         self.root.iconbitmap("crc.ico")
 
         # Conexão com o banco de dados SQLite
-        self.conn = sqlite3.connect(r'\\srvsql\Banco Cursos\fiscais.db')
+        self.conn = sqlite3.connect(r'\\srvsql\Banco fisc\fiscais.db')
         self.create_table()
         atexit.register(self.close_db)  # Fecha o banco de dados ao sair do programa
 
@@ -99,8 +99,10 @@ class App:
         self.search_entry.pack(side=tk.TOP, fill=tk.X, padx=10, pady=5)
         self.search_entry.bind("<KeyRelease>", self.update_report_search)
         # Adicione este botão ao layout da aba "Relatório"
-        Button(self.results_frame, text="Editar Quantidade", command=self.edit_quantity).pack(pady=5)
-
+        Button(self.results_frame, text="Editar Quantidade", command=self.edit_quantity).place(x=120,y=65)
+        Button(self.results_frame, text="Excluir Agendamento", foreground="red", command=self.delete_agendamento).pack(pady=5)
+        # Botão para editar o procedimento atribuído
+        Button(self.results_frame, text="Editar Procedimento Atribuído",command=self.edit_assigned_procedure).place(x=1550,y=65)
         # Mensal
 
         # Configurar a Treeview para exibir os resultados mensais
@@ -234,6 +236,9 @@ class App:
         self.fiscal_select_combobox = ttk.Combobox(self.fiscal_results_frame, values=["Geral"] + self.fiscais)
         self.fiscal_select_combobox.pack(pady=5)
 
+        self.agendamentos_count_label = tk.Label(self.main_frame, text="Total de Agendamentos: 0")
+        self.agendamentos_count_label.pack(pady=10)
+
         # Oculta a combobox logo após sua criação
         self.fiscal_select_combobox.pack_forget()
 
@@ -256,6 +261,14 @@ class App:
                 self.results_tree.column(col, anchor="center")
             # Evento para detectar mudança de aba
             self.notebook.bind("<<NotebookTabChanged>>", self.on_tab_change)
+
+    def update_agendamentos_count(self):
+        """Atualiza a contagem de agendamentos na aba 'Atribuir'."""
+        count = len(self.data_tree.get_children())
+        self.agendamentos_count_label.config(text=f"Total de Agendamentos: {count}")
+
+
+    # Chame também após adicionar ou remover um agendamento
 
     def on_tab_change(self, event):
         # Obtém a aba selecionada
@@ -1024,7 +1037,7 @@ class App:
     def load_data(self):
         fiscal_name = self.fiscal_combobox.get().upper()  # Converte para maiúsculas
         if not fiscal_name:
-            messagebox.showwarning("Atenção", "Escolha um fiscal antes de carregar a planilha.")
+            messagebox.showwarning("Atenção", "Escolha um fiscal antes de continuar.")
             return
 
         # Solicitar a senha
@@ -1050,10 +1063,6 @@ class App:
 
         # Define se o usuário logado é administrador
         self.is_admin = is_admin == 1
-
-        # Botão para carregar os resultados do fiscal selecionado
-        #self.load_fiscal_results_button = tk.Button(self.fiscal_results_frame, text="Atualizar Resultados",command=self.load_fiscal_results_for_admin)
-        #self.load_fiscal_results_button.pack(side="left", padx=5, pady=5)
 
         # Adicionar botões de exportação apenas para administradores
         if self.is_admin:
@@ -1122,8 +1131,6 @@ class App:
                                                bg="light slate gray", fg="white")
             self.desagrupar_button.pack(side="left", padx=5)
 
-
-
         # Verifica se é administrador para exibir a aba adicional
         if self.is_admin:
             self.admin_frame = ttk.Frame(self.notebook)
@@ -1133,6 +1140,43 @@ class App:
         # Chamar a função para criar a combobox na aba "Resultado Mensal" para todos os usuários
         self.create_admin_combobox_for_monthly_results()
 
+        # Remove o frame de login
+        self.login_frame.grid_forget()
+        self.current_fiscal = fiscal_name
+
+        # Informar o tipo de usuário logado
+        if self.is_admin:
+            messagebox.showinfo("Administrador", "Você está logado como administrador.")
+        else:
+            messagebox.showinfo("Usuário", "Você está logado como usuário.")
+
+        # Carregar dados existentes do banco de dados
+        self.load_existing_data_from_db(fiscal_name)
+
+        # Adicionar botão para carregar a planilha posteriormente
+        self.add_load_spreadsheet_button()
+
+    def load_existing_data_from_db(self, fiscal_name):
+        """Carrega os dados do banco de dados para inicializar a aplicação, se disponíveis."""
+        # Carregar dados existentes na aba Relatório
+        self.load_results()  # Carrega os resultados da tabela do fiscal logado
+
+        # Carregar resultados do banco de dados para a aba 'Resultados do Fiscal'
+        self.load_fiscal_results()
+
+    def add_load_spreadsheet_button(self):
+        """Adiciona um botão para carregar a planilha após o login."""
+        load_spreadsheet_button = tk.Button(
+            self.main_frame,
+            text="Carregar Planilha",
+            command=self.load_spreadsheet,
+            bg="light blue",
+            fg="black"
+        )
+        load_spreadsheet_button.pack(side="top", pady=5)
+
+    def load_spreadsheet(self):
+        """Carrega a planilha Excel e atualiza os dados da aplicação."""
         # Abrir o arquivo Excel
         file_path = filedialog.askopenfilename(filetypes=[("Excel files", "*.xlsx")])
         if not file_path:
@@ -1152,21 +1196,21 @@ class App:
 
         # Se o usuário logado não for administrador, filtrar os dados apenas para o fiscal logado
         if not self.is_admin:
-            if fiscal_name not in self.df['Fiscal'].values:
+            if self.current_fiscal not in self.df['Fiscal'].values:
                 messagebox.showerror("Erro", "Fiscal não encontrado na planilha!")
                 return
 
             # Filtra o DataFrame para obter apenas as linhas para o fiscal logado
-            self.filtered_df = self.df[self.df['Fiscal'] == fiscal_name]
+            self.filtered_df = self.df[self.df['Fiscal'] == self.current_fiscal]
         else:
             # Administrador tem acesso a todos os dados
             self.filtered_df = self.df
 
         # Atualiza a Treeview com os dados filtrados para a aba "Atribuir"
-        self.load_attribuir_data()  # Adiciona a função aqui para carregar os dados na aba Atribuir
+        self.load_attribuir_data()
 
         # Carregar dados existentes na aba Relatório
-        existing_report_data = self.load_existing_report_data(fiscal_name)
+        existing_report_data = self.load_existing_report_data(self.current_fiscal)
 
         # Remove as linhas que já estão no Relatório
         if not existing_report_data.empty:
@@ -1196,25 +1240,9 @@ class App:
         # Atualiza a Treeview com os dados filtrados para a aba "Atribuir"
         self.update_treeview(self.data_tree, self.filtered_df)
 
-        # Remove o frame de login
-        self.login_frame.grid_forget()
-        self.current_fiscal = fiscal_name
+        messagebox.showinfo("Sucesso", "Planilha carregada com sucesso!")
 
-        # Carregar resultados do banco de dados para a aba Relatório
-        self.load_results()  # Carrega os resultados da tabela do fiscal logado
 
-        # **Carregar e calcular os resultados para a aba "Resultados do Fiscal"**
-        self.load_fiscal_results()  # Executa o cálculo automaticamente para a aba Resultados do Fiscal
-        self.load_fiscal_results_for_admin()
-
-        # Informar o tipo de usuário logado
-        if self.is_admin:
-            messagebox.showinfo("Administrador", "Você está logado como administrador.")
-        else:
-            messagebox.showinfo("Usuário", "Você está logado como usuário.")
-            # Exemplo de uso para carregar dados com alternância de cor
-            self.update_treeview(self.data_tree, self.filtered_df)
-            self.load_fiscal_results_for_admin()
 
     def load_attribuir_data(self):
         """Carrega os dados na aba 'Atribuir', ocultando agendamentos já atribuídos nas tabelas de procedimentos de cada usuário."""
@@ -1260,6 +1288,7 @@ class App:
             self.data_tree.insert("", "end", values=formatted_row)
             # Evento para detectar mudança de aba
             self.notebook.bind("<<NotebookTabChanged>>", self.on_tab_change)
+            self.update_agendamentos_count()
 
     def load_existing_report_data(self, fiscal_name):
         """Carrega os dados existentes na aba Relatório do banco de dados para o fiscal logado"""
@@ -1687,6 +1716,119 @@ class App:
         self.load_fiscal_results()
         self.load_results()
         self.load_monthly_results()
+        self.update_agendamentos_count()
+
+    def edit_assigned_procedure(self):
+        """Edita apenas o procedimento atribuído na linha selecionada da Treeview."""
+        # Verifica se uma linha está selecionada
+        selected_item = self.results_tree.selection()
+        if not selected_item:
+            messagebox.showwarning("Aviso", "Selecione uma linha para editar!")
+            return
+
+        # Obtém os valores da linha selecionada
+        selected_values = self.results_tree.item(selected_item, "values")
+        if not selected_values:
+            messagebox.showwarning("Aviso", "Linha selecionada não contém dados válidos!")
+            return
+
+        # Abrir uma janela para edição
+        edit_window = tk.Toplevel(self.root)
+        edit_window.title("Editar Procedimento Atribuído")
+        edit_window.geometry("850x200")  # Tamanho reduzido já que não há campo de quantidade
+
+        # Campo para o novo procedimento
+        tk.Label(edit_window, text="Novo Procedimento:", font=("Arial", 12)).pack(pady=10)
+        procedure_combobox = ttk.Combobox(
+            edit_window,
+            values=list(self.procedure_weights.keys()),
+            state='readonly',
+            font=("Arial", 12),
+            width=90
+        )
+        procedure_combobox.pack(pady=10)
+        procedure_combobox.set(selected_values[6])  # Valor atual do procedimento
+
+        def save_changes():
+            # Validação básica
+            new_procedure = procedure_combobox.get()
+
+            if not new_procedure:
+                messagebox.showerror("Erro", "Por favor, selecione um procedimento.")
+                return
+
+            # Atualiza os valores no banco de dados
+            table_name = f'procedimentos_{selected_values[2]}'
+            cursor = self.conn.cursor()
+            cursor.execute(f"""
+                UPDATE {table_name}
+                SET procedimento = ?
+                WHERE coluna_1 = ? AND coluna_2 = ? AND procedimento = ?
+            """, (new_procedure, selected_values[0], selected_values[1], selected_values[6]))
+            self.conn.commit()
+
+            # Atualiza os valores na Treeview
+            peso = self.procedure_weights.get(new_procedure, 1)
+            new_resultado = int(selected_values[7]) * peso  # Mantém a quantidade original
+            updated_values = list(selected_values)
+            updated_values[6] = new_procedure  # Atualiza o procedimento
+            updated_values.append(new_resultado)  # Atualiza o resultado
+            self.results_tree.item(selected_item, values=updated_values)
+
+            # Fecha a janela de edição
+            edit_window.destroy()
+            messagebox.showinfo("Sucesso", "Procedimento atualizado com sucesso!")
+
+        # Botão para salvar as alterações
+        save_button = tk.Button(edit_window, text="Salvar Alterações", font=("Arial", 12), command=save_changes)
+        save_button.pack(pady=20)
+
+    def delete_agendamento(self):
+        """Exclui o agendamento selecionado na Treeview da aba 'Relatório' e remove do banco de dados."""
+        # Obter a linha selecionada
+        selected_item = self.results_tree.selection()
+        if not selected_item:
+            messagebox.showwarning("Aviso", "Selecione um agendamento para excluir!")
+            return
+
+        # Capturar os valores da linha selecionada
+        selected_values = self.results_tree.item(selected_item, "values")
+
+        if not selected_values:
+            messagebox.showwarning("Aviso", "Linha selecionada não contém dados válidos!")
+            return
+
+        # Confirmar exclusão
+        confirm = messagebox.askyesno("Confirmação", "Tem certeza de que deseja excluir este agendamento?")
+        if not confirm:
+            return
+
+        # Capturar valores específicos para identificação no banco de dados
+        data_conclusao = selected_values[0]
+        numero_agendamento = selected_values[1]
+        fiscal = selected_values[2]
+        procedimento = selected_values[6]
+
+        # Excluir do banco de dados
+        table_name = f'procedimentos_{fiscal}'
+        cursor = self.conn.cursor()
+
+        try:
+            cursor.execute(
+                f"""
+                DELETE FROM {table_name}
+                WHERE coluna_1 = ? AND coluna_2 = ? AND procedimento = ?
+                """,
+                (data_conclusao, numero_agendamento, procedimento)
+            )
+            self.conn.commit()
+            messagebox.showinfo("Sucesso", "Agendamento excluído com sucesso!")
+
+            # Remover a linha da Treeview
+            self.results_tree.delete(selected_item)
+        except Exception as e:
+            messagebox.showerror("Erro", f"Erro ao excluir agendamento: {e}")
+            self.update_agendamentos_count()
 
     def ask_reason_for_cancellation(self):
         """Abre uma janela para o usuário inserir o motivo do cancelamento."""
@@ -1782,48 +1924,84 @@ class App:
         messagebox.showinfo("Exportação Completa", f"Dados exportados para {filename}")
 
     def export_monthly_results(self, tree, export_type):
-        # Capturar todos os dados visíveis na Treeview "Resultado Mensal"
-        data = [tree.item(item)["values"] for item in tree.get_children()]
+        """Exporta os dados visíveis na Treeview de resultados mensais."""
+        # Capturar todos os dados visíveis na Treeview
+        data = []
+        headers = [tree.heading(col)["text"] for col in tree["columns"]]  # Cabeçalhos da Treeview
+        data.append(headers)  # Adicionar cabeçalhos
+
+        for item in tree.get_children():
+            row = tree.item(item)["values"]
+            data.append(row)
 
         # Verificar se há dados para exportar
-        if not data:
+        if len(data) <= 1:  # Só cabeçalhos
             messagebox.showwarning("Aviso", "Não há dados para exportar.")
             return
 
-        # Confirmar o tipo de exportação e chamar a função correspondente
+        # Exportar conforme o tipo escolhido
         if export_type == "pdf":
             self.export_monthly_to_pdf(data)
         elif export_type == "excel":
             self.export_monthly_to_excel(data)
 
-    def export_monthly_to_pdf(data, filename="resultado_mensal.pdf"):
-        # Configura o documento PDF
-        pdf = SimpleDocTemplate(filename, pagesize=A4)
-        elements = []
+    def export_monthly_to_pdf(self, data):
+        """Exporta os dados da Treeview de resultados mensais para um arquivo PDF com ajustes para caber no layout."""
+        if not data:
+            messagebox.showwarning("Aviso", "Não há dados para exportar.")
+            return
 
-        # Obtém os dados do DataFrame para a tabela
-        data_frame = pd.DataFrame(data)  # Converte para DataFrame se necessário
-        table_data = [data_frame.columns.to_list()] + data_frame.values.tolist()  # Cabeçalhos + dados
+        # Escolher o local para salvar o arquivo
+        filename = filedialog.asksaveasfilename(
+            defaultextension=".pdf",
+            filetypes=[("PDF files", "*.pdf")],
+            title="Salvar arquivo como"
+        )
+        if not filename:
+            return  # Cancelamento do salvamento
 
-        # Configura a tabela para o PDF
-        table = Table(table_data)
+        # Configuração do documento
+        pdf = SimpleDocTemplate(
+            filename,
+            pagesize=landscape(A4),  # Orientação paisagem
+            leftMargin=20,
+            rightMargin=20,
+            topMargin=20,
+            bottomMargin=20
+        )
+
+        # Preparação dos dados
+        wrapped_data = []
+        max_column_widths = [150] + [50] * (len(data[0]) - 2) + [75]  # Larguras aproximadas
+
+        # Quebrar cabeçalhos e células longas
+        for row in data:
+            wrapped_row = [
+                textwrap.fill(str(cell), width=30 if i == 0 else 10)
+                for i, cell in enumerate(row)
+            ]
+            wrapped_data.append(wrapped_row)
+
+        # Estilo da tabela
+        table = Table(wrapped_data, colWidths=max_column_widths)
         table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.grey),  # Cabeçalho em cinza
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('FONTSIZE', (0, 0), (-1, 0), 10),
-            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-            ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
-            ('GRID', (0, 0), (-1, -1), 1, colors.black),
+            ('BACKGROUND', (0, 0), (-1, 0), colors.grey),  # Fundo do cabeçalho
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),  # Cor do texto do cabeçalho
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),  # Centralizar texto
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),  # Fonte do cabeçalho
+            ('FONTSIZE', (0, 0), (-1, 0), 8),  # Tamanho da fonte do cabeçalho
+            ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),  # Fonte do corpo
+            ('FONTSIZE', (0, 1), (-1, -1), 7),  # Tamanho da fonte do corpo
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.black),  # Grade
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE')  # Alinhamento vertical
         ]))
 
-        # Adiciona a tabela ao documento PDF
-        elements.append(table)
-
-        # Salva o PDF
-        pdf.build(elements)
-        print(f"Arquivo PDF '{filename}' exportado com sucesso.")
+        # Geração do PDF
+        try:
+            pdf.build([table])
+            messagebox.showinfo("Sucesso", f"Arquivo PDF salvo com sucesso em: {filename}")
+        except Exception as e:
+            messagebox.showerror("Erro", f"Ocorreu um erro ao salvar o PDF: {e}")
 
     def export_monthly_to_excel(self, data):
         # Caminho para salvar o arquivo Excel
