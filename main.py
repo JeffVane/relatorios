@@ -98,11 +98,28 @@ class App:
         self.search_entry = tk.Entry(self.results_frame, textvariable=self.search_var)
         self.search_entry.pack(side=tk.TOP, fill=tk.X, padx=10, pady=5)
         self.search_entry.bind("<KeyRelease>", self.update_report_search)
-        # Adicione este botão ao layout da aba "Relatório"
-        Button(self.results_frame, text="Editar Quantidade", command=self.edit_quantity).place(x=120,y=65)
-        Button(self.results_frame, text="Excluir Agendamento", foreground="red", command=self.delete_agendamento).pack(pady=5)
-        # Botão para editar o procedimento atribuído
-        Button(self.results_frame, text="Editar Procedimento Atribuído",command=self.edit_assigned_procedure).place(x=1550,y=65)
+        # Frame para conter o menu
+        menu_frame = tk.Frame(self.results_frame)
+        menu_frame.pack(fill=tk.X, padx=5, pady=1)  # fill=tk.X faz o frame preencher horizontalmente
+
+        # Criação do Menubutton usando tk (não ttk)
+        menu_button = tk.Menubutton(menu_frame, text="Opções", relief=tk.RAISED, bg='#4a90e2', fg='white',
+                                    font=('Helvetica', 8, 'bold'))
+        menu_button.pack(side=tk.LEFT, padx=5, pady=5)  # Empacotando à esquerda
+
+        # Criação do Menu
+        menu = tk.Menu(menu_button, tearoff=0)
+        menu_button.config(menu=menu)
+
+        # Adicionando opções ao menu
+        menu.add_command(label="Editar Quantidade", command=self.edit_quantity)
+        menu.add_command(label="Excluir Agendamento", command=self.delete_agendamento)
+        menu.add_command(label="Editar Procedimento Atribuído", command=self.edit_assigned_procedure)
+        menu.add_command(label="Incluir", command=self.duplicate_schedule)
+
+        # Configurar o Menubutton para exibir o menu
+        menu_button['menu'] = menu
+
         # Mensal
 
         # Configurar a Treeview para exibir os resultados mensais
@@ -230,14 +247,27 @@ class App:
             self.procedure_listbox.insert(tk.END, proc)
         self.procedure_listbox.pack(pady=5, fill=tk.X)
 
-        self.assign_button = tk.Button(self.main_frame, text="Atribuir Procedimentos", command=self.assign_procedure)
-        self.assign_button.pack(pady=4)
+        # Frame para conter os botões lado a lado
+        buttons_frame = tk.Frame(self.main_frame)
+        buttons_frame.pack(pady=4)
+
+        # Botão "Atribuir Procedimentos"
+        self.assign_button = tk.Button(buttons_frame, text="Atribuir Procedimentos", command=self.assign_procedure)
+        self.assign_button.pack(side="left", padx=3)
+
+
+        # Botão "Adicionar Agendamento Manualmente"
+        manual_add_button = tk.Button(buttons_frame, text="Adicionar Agendamento Manualmente",
+                                      command=self.add_manual_agendamento)
+        manual_add_button.pack(side="right")
+
+        # Rótulo para contagem de agendamentos
+        self.agendamentos_count_label = tk.Label(self.main_frame, text="Total de Agendamentos: 0")
+        self.agendamentos_count_label.pack(pady=10)
+
         # Criação da combobox na aba "Resultados Do Fiscal"
         self.fiscal_select_combobox = ttk.Combobox(self.fiscal_results_frame, values=["Geral"] + self.fiscais)
         self.fiscal_select_combobox.pack(pady=5)
-
-        self.agendamentos_count_label = tk.Label(self.main_frame, text="Total de Agendamentos: 0")
-        self.agendamentos_count_label.pack(pady=10)
 
         # Oculta a combobox logo após sua criação
         self.fiscal_select_combobox.pack_forget()
@@ -1782,6 +1812,109 @@ class App:
         # Botão para salvar as alterações
         save_button = tk.Button(edit_window, text="Salvar Alterações", font=("Arial", 12), command=save_changes)
         save_button.pack(pady=20)
+
+    def duplicate_schedule(self):
+        selected_item = self.results_tree.focus()
+        if not selected_item:
+            messagebox.showwarning("Aviso", "Selecione um agendamento para duplicar.")
+            return
+
+        # Obtém os valores da linha selecionada
+        item_values = self.results_tree.item(selected_item, "values")
+        fiscal = item_values[2]  # Supondo que o nome do fiscal está na coluna 2
+        table_name = f'procedimentos_{fiscal}'
+
+        # Abre uma janela para selecionar o novo procedimento e definir a quantidade
+        dup_window = Toplevel(self.root)
+        dup_window.title("Duplicar Agendamento")
+        dup_window.geometry("300x200")
+
+        Label(dup_window, text="Selecione o Procedimento:").pack(pady=10)
+        new_proc_combobox = ttk.Combobox(dup_window, values=list(self.procedure_weights.keys()), state='readonly')
+        new_proc_combobox.pack(pady=5)
+
+        Label(dup_window, text="Quantidade:").pack(pady=10)
+        quantity_entry = Entry(dup_window)
+        quantity_entry.pack(pady=5)
+
+        def save_duplicate():
+            new_procedure = new_proc_combobox.get()
+            quantity = quantity_entry.get()
+            if not new_procedure or not quantity.isdigit():
+                messagebox.showerror("Erro", "Por favor, preencha todos os campos corretamente.")
+                return
+
+            # Insere a duplicata no banco de dados
+            cursor = self.conn.cursor()
+            cursor.execute(
+                f"INSERT INTO {table_name} (coluna_1, coluna_2, coluna_3, coluna_4, coluna_5, coluna_6, procedimento, quantidade) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                (item_values[0], item_values[1], fiscal, item_values[3], item_values[4], item_values[5], new_procedure,
+                 quantity))
+            self.conn.commit()
+            dup_window.destroy()
+            messagebox.showinfo("Sucesso", "Agendamento duplicado com sucesso.")
+
+        Button(dup_window, text="Salvar Inclusão", command=save_duplicate).pack(pady=20)
+
+    def setup_treeview(self):
+        """Configura a Treeview na inicialização do programa."""
+        self.data_tree = ttk.Treeview(self.root, columns=(
+        "Data Conclusão", "Número Agendamento", "Fiscal", "Tipo Registro", "Número Registro", "Nome"), show="headings")
+        for col in self.data_tree["columns"]:
+            self.data_tree.heading(col, text=col)
+        self.data_tree.grid(row=1, column=0, sticky="nsew")
+
+    def add_manual_agendamento(self):
+        """Abre uma janela para adicionar manualmente um agendamento."""
+        add_window = tk.Toplevel(self.root)
+        add_window.title("Adicionar Agendamento")
+
+        # Configurando a janela para redimensionar com a mudança de tamanho
+        add_window.grid_rowconfigure(0, weight=1)
+        add_window.grid_columnconfigure(1, weight=1)
+
+        # Labels e Entrys para cada campo necessário
+        labels = [
+            "Data Conclusão (DD-MM-YYYY):",
+            "Número Agendamento:",
+            "Fiscal:",
+            "Tipo Registro:",
+            "Número Registro:",
+            "Nome:"
+        ]
+        entries = []
+
+        for i, label_text in enumerate(labels):
+            label = tk.Label(add_window, text=label_text)
+            label.grid(row=i, column=0, padx=10, pady=5, sticky="w")
+            entry = tk.Entry(add_window)
+            entry.grid(row=i, column=1, padx=10, pady=5, sticky="ew")  # Expandir horizontalmente
+            entries.append(entry)
+
+        # Função para salvar o agendamento apenas na treeview
+        def save_agendamento():
+            try:
+                # Capturar os valores inseridos pelo usuário
+                values = [entry.get() for entry in entries]
+                if not all(values):
+                    messagebox.showerror("Erro", "Todos os campos devem ser preenchidos.")
+                    return
+
+                # Formatar os valores conforme as colunas da treeview na aba "Atribuir"
+                tree_values = tuple(values)  # Garante que os dados estão em formato de tupla
+
+                # Inserir os valores na Treeview correta na aba "Atribuir"
+                self.data_tree.insert("", "end", values=tree_values)
+                messagebox.showinfo("Sucesso", "Agendamento adicionado com sucesso na aba 'Atribuir'.")
+
+                # Fechar a janela após inserir na Treeview
+                add_window.destroy()
+            except Exception as e:
+                messagebox.showerror("Erro", f"Um erro ocorreu: {str(e)}")
+
+        # Botão para salvar o agendamento
+        save_button = tk.Button(add_window, text="Salvar", command=save_agendamento)
+        save_button.grid(row=len(labels), column=0, columnspan=2, pady=10, sticky="ew")
 
     def delete_agendamento(self):
         """Exclui o agendamento selecionado na Treeview da aba 'Relatório' e remove do banco de dados."""
