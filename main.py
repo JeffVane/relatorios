@@ -55,6 +55,8 @@ class App:
         # Conectar stdout ao console para depuração
         sys.stdout = sys.__stdout__  # Garantir que o stdout esteja correto
 
+
+
         # Configuração do estilo para as cores das colunas
         style = ttk.Style()
         style.theme_use('clam')
@@ -98,28 +100,6 @@ class App:
         self.search_entry = tk.Entry(self.results_frame, textvariable=self.search_var)
         self.search_entry.pack(side=tk.TOP, fill=tk.X, padx=10, pady=5)
         self.search_entry.bind("<KeyRelease>", self.update_report_search)
-        # Frame para conter o menu
-        menu_frame = tk.Frame(self.results_frame)
-        menu_frame.pack(fill=tk.X, padx=5, pady=1)  # fill=tk.X faz o frame preencher horizontalmente
-
-        # Criação do Menubutton usando tk (não ttk)
-        menu_button = tk.Menubutton(menu_frame, text="Opções", relief=tk.RAISED, bg='#4a90e2', fg='white',
-                                    font=('Helvetica', 8, 'bold'))
-        menu_button.pack(side=tk.LEFT, padx=5, pady=5)  # Empacotando à esquerda
-
-        # Criação do Menu
-        menu = tk.Menu(menu_button, tearoff=0)
-        menu_button.config(menu=menu)
-
-        # Adicionando opções ao menu
-        menu.add_command(label="Editar Quantidade", command=self.edit_quantity)
-        menu.add_command(label="Excluir Agendamento", command=self.delete_agendamento)
-        menu.add_command(label="Editar Procedimento Atribuído", command=self.edit_assigned_procedure)
-        menu.add_command(label="Incluir", command=self.duplicate_schedule)
-
-        # Configurar o Menubutton para exibir o menu
-        menu_button['menu'] = menu
-
         # Mensal
 
         # Configurar a Treeview para exibir os resultados mensais
@@ -271,6 +251,8 @@ class App:
 
         # Oculta a combobox logo após sua criação
         self.fiscal_select_combobox.pack_forget()
+
+        self.setup_report_frame()
 
         self.fiscal_select_combobox.pack_forget()
         # Configuração da Treeview de Resultados
@@ -1855,6 +1837,49 @@ class App:
             messagebox.showinfo("Sucesso", "Agendamento duplicado com sucesso.")
 
         Button(dup_window, text="Salvar Inclusão", command=save_duplicate).pack(pady=20)
+
+    def setup_report_frame(self):
+        # Utiliza o frame onde o botão 'Opções' está localizado, que já deve estar criado
+        menu_frame = tk.Frame(self.results_frame)
+        menu_frame.pack(fill=tk.X, padx=5, pady=1)
+
+        # Combobox para seleção do mês
+        self.month_combobox = ttk.Combobox(menu_frame, values=[
+            "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+            "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
+        ], state="readonly")
+        self.month_combobox.pack(side=tk.LEFT, padx=5)
+        self.month_combobox.bind("<<ComboboxSelected>>", self.filter_by_month)  # Atualizado para usar o evento
+
+        # Continuação do seu menu de opções existente
+        menu_button = tk.Menubutton(menu_frame, text="Opções", relief=tk.RAISED, bg='#4a90e2', fg='white',
+                                    font=('Helvetica', 8, 'bold'))
+        menu_button.pack(side=tk.LEFT, padx=5)
+
+        # Criação do Menu
+        menu = tk.Menu(menu_button, tearoff=0)
+        menu_button.config(menu=menu)
+
+        # Adicionando opções ao menu
+        menu.add_command(label="Editar Quantidade", command=self.edit_quantity)
+        menu.add_command(label="Excluir Agendamento", command=self.delete_agendamento)
+        menu.add_command(label="Editar Procedimento Atribuído", command=self.edit_assigned_procedure)
+        menu.add_command(label="Incluir", command=self.duplicate_schedule)
+
+        # Configurar o Menubutton para exibir o menu
+        menu_button['menu'] = menu
+
+    def filter_by_month(self, event=None):
+        # Pega o mês selecionado
+        selected_month = self.month_combobox.get()
+        month_index = self.month_combobox.current() + 1  # +1 porque o índice começa em 0
+
+        # Filtra os dados baseando-se no mês selecionado
+        # Supondo que a data esteja na primeira coluna no formato DD-MM-AAAA
+        filtered_data = [item for item in self.original_tree_items if int(item[0].split('-')[1]) == month_index]
+        self.results_tree.delete(*self.results_tree.get_children())
+        for item in filtered_data:
+            self.results_tree.insert('', 'end', values=item)
 
     def setup_treeview(self):
         """Configura a Treeview na inicialização do programa."""
