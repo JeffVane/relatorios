@@ -1,27 +1,77 @@
+# Bibliotecas para manipulação de dados
 import pandas as pd
+
+
+# Bibliotecas para GUI com tkinter
 import tkinter as tk
-from tkinter import ttk, filedialog, messagebox, MULTIPLE, Toplevel, Label, Button, Entry
+from tkinter import ttk, filedialog, messagebox, simpledialog, font
+from tkinter.constants import MULTIPLE  # Apenas para seleção múltipla
+from tkinter import Toplevel, Label, Button, Entry  # Componentes necessários
+
+# SQLite e sistema operacional
 import sqlite3
 import atexit
-import tkinter.simpledialog as simpledialog  # Importa o módulo para caixas de diálogo
 import os
 import sys
+import requests
+
+# Manipulação de tempo e ciclos
+from datetime import datetime, timedelta
 from itertools import cycle
-from tkinter import font
-from reportlab.lib.pagesizes import A4
-from reportlab.pdfgen import canvas
-import pandas as pd
-from reportlab.pdfbase.pdfmetrics import stringWidth
-from reportlab.lib.units import inch
-from reportlab.lib.pagesizes import landscape, A4
+
+# Bibliotecas para geração de PDFs com ReportLab
+from reportlab.lib.pagesizes import A4, landscape  # Tamanhos de página
+from reportlab.pdfgen import canvas  # Geração de PDFs
+from reportlab.pdfbase.pdfmetrics import stringWidth  # Métricas de texto
+from reportlab.lib.units import inch  # Unidades para layout
+from reportlab.lib import colors  # Cores para tabelas e elementos
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph  # Layout de PDF
+from reportlab.lib.styles import getSampleStyleSheet  # Estilos de texto para PDFs
+
+# Biblioteca para manipulação de texto
 import textwrap
-from reportlab.pdfgen import canvas
-from reportlab.lib import colors
-from reportlab.platypus import Table, TableStyle
-from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph
-from reportlab.lib.styles import getSampleStyleSheet
 
 
+def check_for_updates(current_version):
+    try:
+        # URL do JSON com as informações de atualização no GitHub
+        update_url = "https://raw.githubusercontent.com/JeffVane/relatorios/main/update_info.json"
+        response = requests.get(update_url)
+        response.raise_for_status()
+        update_info = response.json()
+
+        latest_version = update_info["version"]
+        download_url = update_info["url"]
+
+        if latest_version > current_version:
+            print(f"Nova versão disponível: {latest_version}. Atualizando...")
+            download_and_replace(download_url)
+        else:
+            print("Você já está usando a versão mais recente.")
+    except Exception as e:
+        print(f"Erro ao verificar atualizações: {e}")
+
+
+def download_and_replace(download_url):
+    try:
+        # Baixar o novo executável
+        response = requests.get(download_url, stream=True)
+        response.raise_for_status()
+
+        with open("Fiscalização(Relatórios)_atualizado.exe", "wb") as f:
+            for chunk in response.iter_content(chunk_size=8192):
+                f.write(chunk)
+
+        print("Atualização baixada com sucesso!")
+
+        # Substituir o executável antigo pelo novo
+        os.replace("Fiscalização(Relatórios)_atualizado.exe", sys.executable)
+        print("Atualização concluída! Reiniciando o programa...")
+
+        # Reiniciar o programa
+        os.execl(sys.executable, sys.executable, *sys.argv)
+    except Exception as e:
+        print(f"Erro ao baixar ou instalar a atualização: {e}")
 class App:
     def __init__(self, root):
         self.root = root
@@ -39,6 +89,8 @@ class App:
         self.create_meta_table()  # Cria a tabela de metas globais
         self.create_grupos_table()  # Função que cria a tabela de grupos de procedimentos
         self.create_agendamentos_table()
+        self.create_log_table()
+
 
         # Variáveis
         self.df = None
@@ -54,6 +106,8 @@ class App:
         self.login_frame.grid(row=0, column=0, sticky='nsew', padx=10, pady=10)
         # Conectar stdout ao console para depuração
         sys.stdout = sys.__stdout__  # Garantir que o stdout esteja correto
+        self.original_log_items = []  # Inicializa como uma lista vazia
+
 
 
 
@@ -302,32 +356,6 @@ class App:
 
             self.load_monthly_results()  # Atualiza a Treeview da aba Resultado Mensal
 
-        self.default_procedures = [
-            "DECORES (POR DECLARAÇÃO)",
-            "NBCTG 1002 (POR CONJUNTO DE DEMONSTRAÇÕES): PROJETO 2001",
-            "NBCTG 1001 (POR CONJUNTO DE DEMONSTRAÇÕES): PROJETO 2001",
-            "NBCTG 1000 E NBCTG 26 (POR CONJUNTO DE DEMONSTRAÇÕES): PROJETO 2001",
-            "RELATÓRIO (E PROCEDIMENTOS) DE AUDITORIA DE ACORDO COM AS NBCS (POR RELATÓRIO)",
-            "LAUDO PERICIAL DE ACORDO COM AS NBCS (POR LAUDO)",
-            "REGISTRO (1 PROFISSIONAL RAIS/CAGED PF) (POR AGENDAMENTO)",
-            "REGISTRO (CNAE PJ) (POR AGENDAMENTO)",
-            "REGISTRO (BAIXADO)",
-            "REGISTRO (ORGANIZAÇÃO CONTÁBIL/SÓCIOS E FUNCIONÁRIOS) (POR AGENDAMENTO)",
-            "FALTA DE ESCRITURAÇÃO (LIVROS OBRIGATÓRIOS) (POR CLIENTE)",
-            "COMUNICAÇÃO",
-            "REPRESENTAÇÃO",
-            "DENÚNCIA",
-            "NBCTG 1002 (POR CONJUNTO DE DEMONSTRAÇÕES): PROJETO 2002",
-            "NBCTG 1001 (POR CONJUNTO DE DEMONSTRAÇÕES): PROJETO 2002",
-            "NBCTG 1000 E NBCTG 26 (POR CONJUNTO DE DEMONSTRAÇÕES): PROJETO 2002",
-            "ENTIDADES DESPORTIVAS PROFISSIONAIS (ANÁLISE DEMONSTRAÇÕES CONTÁBEIS DE ACORDO COM AS NBCS - ITG 2003)",
-            "ÓRGÃOS PÚBLICOS (ANÁLISE DEMONSTRAÇÕES CONTÁBEIS DE ACORDO COM AS NBCS - NBCTSP)",
-            "ENTIDADE FECHADA DE PREVIDÊNCIA COMPLEMENTAR (ANÁLISE DEMONSTRAÇÕES CONTÁBEIS DE ACORDO COM AS NBCS - ITG 2001)",
-            "COOPERATIVAS (ANÁLISE DEMONSTRAÇÕES CONTÁBEIS DE ACORDO COM AS NBCS - ITG 2004)",
-            "ENTIDADES SEM FINS LUCRATIVOS (ANÁLISE DEMONSTRAÇÕES CONTÁBEIS DE ACORDO COM AS NBCS - ITG 2002)",
-            "REGISTRO DE RT DE ORGANIZAÇÃO NÃO CONTÁBIL (PROFISSIONAL/ORGANIZAÇÃO CONTÁBIL) (POR AGENDAMENTO)",
-            "CANCELADO"
-        ]
 
     def load_default_procedures(self):
         """Carrega a lista padrão de procedimentos na aba 'Resultados do Fiscal'"""
@@ -428,6 +456,25 @@ class App:
                 is_admin INTEGER DEFAULT 0  -- 0 para usuário comum, 1 para administrador
             )
         ''')
+        self.conn.commit()
+
+    def create_log_table(self):
+        cursor = self.conn.cursor()
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS logs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user TEXT NOT NULL,
+                action TEXT NOT NULL,
+                timestamp TEXT NOT NULL
+            )
+        ''')
+        self.conn.commit()
+
+    def log_action(self, user, action):
+        cursor = self.conn.cursor()
+        cursor.execute('''
+            INSERT INTO logs (user, action) VALUES (?, ?)
+        ''', (user, action))
         self.conn.commit()
 
     def add_motivo_column(self):
@@ -1168,6 +1215,75 @@ class App:
         # Adicionar botão para carregar a planilha posteriormente
         self.add_load_spreadsheet_button()
 
+        if self.is_admin:
+            self.log_frame = ttk.Frame(self.notebook)
+            self.notebook.add(self.log_frame, text="Logs de Ações")
+            self.setup_log_tab()
+
+    def setup_log_tab(self):
+        self.log_tree = ttk.Treeview(self.log_frame, columns=("user", "action"), show="headings")
+        self.log_tree.heading("user", text="Usuário")
+        self.log_tree.heading("action", text="Ação")
+        self.log_tree.column("user", width=5)
+        self.log_tree.column("action", width=300)
+        self.log_tree.pack(fill=tk.BOTH, expand=True)
+        self.log_search_var = tk.StringVar()
+        tk.Label(self.log_frame, text="Buscar:").pack(side=tk.TOP, padx=10, pady=5, anchor="w")
+        self.log_search_entry = tk.Entry(self.log_frame, textvariable=self.log_search_var)
+        self.log_search_entry.pack(side=tk.TOP, fill=tk.X, padx=10, pady=5)
+        self.log_search_entry.bind("<KeyRelease>", self.update_log_search)
+
+        # Botão para atualizar os logs
+        refresh_button = tk.Button(self.log_frame, text="Atualizar Logs", command=self.load_logs)
+        refresh_button.pack(pady=10)
+
+    def load_logs(self):
+        if not self.is_admin:
+            messagebox.showerror("Erro", "Acesso negado. Apenas administradores podem ver os logs.")
+            return
+
+        # Limpar a Treeview antes de carregar novos dados
+        self.log_tree.delete(*self.log_tree.get_children())
+
+        # Buscar logs
+        cursor = self.conn.cursor()
+        cursor.execute("SELECT user, action FROM logs ORDER BY timestamp DESC")
+        logs = cursor.fetchall()
+
+        # Armazena os logs originais para busca
+        self.original_log_items = logs
+
+        # Inserir logs na Treeview
+        for log in logs:
+            self.log_tree.insert("", "end", values=log)
+
+    def show_logs(self):
+        if not self.is_admin:
+            messagebox.showerror("Erro", "Acesso negado. Apenas administradores podem ver os logs.")
+            return
+
+        cursor = self.conn.cursor()
+        cursor.execute("SELECT user, action, timestamp FROM logs ORDER BY datetime(timestamp) DESC")
+        logs = cursor.fetchall()
+        self.original_log_items = logs  # Armazene os logs originais
+
+    def update_log_search(self, event=None):
+        search_term = self.log_search_var.get().lower()
+
+        # Limpa os itens atuais da Treeview
+        self.log_tree.delete(*self.log_tree.get_children())
+
+        # Verifica se o campo de busca está vazio
+        if not search_term:
+            # Restaura todos os itens originais
+            for log in self.original_log_items:
+                self.log_tree.insert("", "end", values=log)
+        else:
+            # Filtra e adiciona apenas os itens que correspondem ao termo de busca
+            for log in self.original_log_items:
+                if any(search_term in str(value).lower() for value in log):
+                    self.log_tree.insert("", "end", values=log)
+
     def load_existing_data_from_db(self, fiscal_name):
         """Carrega os dados do banco de dados para inicializar a aplicação, se disponíveis."""
         # Carregar dados existentes na aba Relatório
@@ -1341,6 +1457,8 @@ class App:
         # Forçar a atualização da árvore para aplicar as cores
         tree.tag_configure('odd', background='#f0f0f0')
         tree.tag_configure('even', background='#dcdcdc')
+
+
 
     def load_results(self):
         """Carrega os dados na Treeview da aba 'Relatório', evitando duplicações, procedimentos cancelados e armazenando-os em uma lista para busca."""
@@ -1732,28 +1850,26 @@ class App:
 
     def edit_assigned_procedure(self):
         """Edita apenas o procedimento atribuído na linha selecionada da Treeview."""
-        # Verifica se uma linha está selecionada
         selected_item = self.results_tree.selection()
         if not selected_item:
             messagebox.showwarning("Aviso", "Selecione uma linha para editar!")
             return
 
-        # Obtém os valores da linha selecionada
         selected_values = self.results_tree.item(selected_item, "values")
         if not selected_values:
             messagebox.showwarning("Aviso", "Linha selecionada não contém dados válidos!")
             return
 
         # Abrir uma janela para edição
-        edit_window = tk.Toplevel(self.root)
+        edit_window = Toplevel(self.root)
         edit_window.title("Editar Procedimento Atribuído")
         edit_window.geometry("850x200")  # Tamanho reduzido já que não há campo de quantidade
 
         # Campo para o novo procedimento
-        tk.Label(edit_window, text="Novo Procedimento:", font=("Arial", 12)).pack(pady=10)
+        Label(edit_window, text="Novo Procedimento:", font=("Arial", 12)).pack(pady=10)
         procedure_combobox = ttk.Combobox(
             edit_window,
-            values=list(self.procedure_weights.keys()),
+            values=list(self.procedure_weights.keys()),  # Supondo que 'procedure_weights' é um dicionário existente
             state='readonly',
             font=("Arial", 12),
             width=90
@@ -1762,7 +1878,6 @@ class App:
         procedure_combobox.set(selected_values[6])  # Valor atual do procedimento
 
         def save_changes():
-            # Validação básica
             new_procedure = procedure_combobox.get()
 
             if not new_procedure:
@@ -1770,30 +1885,37 @@ class App:
                 return
 
             # Atualiza os valores no banco de dados
-            table_name = f'procedimentos_{selected_values[2]}'
+            fiscal = selected_values[2]  # Nome do fiscal responsável
+            agendamento_numero = selected_values[1]  # Número do agendamento
+            table_name = f'procedimentos_{fiscal}'
             cursor = self.conn.cursor()
-            cursor.execute(f"""
-                UPDATE {table_name}
-                SET procedimento = ?
-                WHERE coluna_1 = ? AND coluna_2 = ? AND procedimento = ?
-            """, (new_procedure, selected_values[0], selected_values[1], selected_values[6]))
-            self.conn.commit()
+            try:
+                cursor.execute(f"""
+                    UPDATE {table_name}
+                    SET procedimento = ?
+                    WHERE coluna_1 = ? AND coluna_2 = ? AND procedimento = ?
+                """, (new_procedure, selected_values[0], agendamento_numero, selected_values[6]))
+                self.conn.commit()
 
-            # Atualiza os valores na Treeview
-            peso = self.procedure_weights.get(new_procedure, 1)
-            new_resultado = int(selected_values[7]) * peso  # Mantém a quantidade original
-            updated_values = list(selected_values)
-            updated_values[6] = new_procedure  # Atualiza o procedimento
-            updated_values.append(new_resultado)  # Atualiza o resultado
-            self.results_tree.item(selected_item, values=updated_values)
+                # Data e hora atuais para o log
+                now = datetime.datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+                # Log the action
+                self.log_action(fiscal,
+                                f"Procedimento '{selected_values[6]}' alterado para '{new_procedure}' no agendamento número '{agendamento_numero}' em {now}.")
 
-            # Fecha a janela de edição
-            edit_window.destroy()
-            messagebox.showinfo("Sucesso", "Procedimento atualizado com sucesso!")
+                # Atualiza os valores na Treeview
+                updated_values = list(selected_values)
+                updated_values[6] = new_procedure  # Atualiza o procedimento
+                self.results_tree.item(selected_item, values=updated_values)
+
+                edit_window.destroy()
+                messagebox.showinfo("Sucesso", "Procedimento atualizado com sucesso!")
+            except Exception as e:
+                self.conn.rollback()
+                messagebox.showerror("Erro", f"Erro ao atualizar o procedimento: {e}")
 
         # Botão para salvar as alterações
-        save_button = tk.Button(edit_window, text="Salvar Alterações", font=("Arial", 12), command=save_changes)
-        save_button.pack(pady=20)
+        Button(edit_window, text="Salvar Alterações", font=("Arial", 12), command=save_changes).pack(pady=20)
 
     def duplicate_schedule(self):
         selected_item = self.results_tree.focus()
@@ -1803,7 +1925,8 @@ class App:
 
         # Obtém os valores da linha selecionada
         item_values = self.results_tree.item(selected_item, "values")
-        fiscal = item_values[2]  # Supondo que o nome do fiscal está na coluna 2
+        fiscal = item_values[2]  # Nome do fiscal
+        agendamento_numero = item_values[1]  # Número do agendamento
         table_name = f'procedimentos_{fiscal}'
 
         # Abre uma janela para selecionar o novo procedimento e definir a quantidade
@@ -1830,16 +1953,23 @@ class App:
             cursor = self.conn.cursor()
             cursor.execute(
                 f"INSERT INTO {table_name} (coluna_1, coluna_2, coluna_3, coluna_4, coluna_5, coluna_6, procedimento, quantidade) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                (item_values[0], item_values[1], fiscal, item_values[3], item_values[4], item_values[5], new_procedure,
-                 quantity))
+                (item_values[0], agendamento_numero, fiscal, item_values[3], item_values[4], item_values[5],
+                 new_procedure, quantity))
             self.conn.commit()
+
+            # Data e hora atuais para o log
+            now = datetime.datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+            # Log the action
+            self.log_action(fiscal,
+                            f"Agendamento duplicado: Procedimento '{new_procedure}' com quantidade '{quantity}' adicionado sob o número de agendamento '{agendamento_numero}' em {now}.")
+
             dup_window.destroy()
             messagebox.showinfo("Sucesso", "Agendamento duplicado com sucesso.")
 
         Button(dup_window, text="Salvar Inclusão", command=save_duplicate).pack(pady=20)
 
     def setup_report_frame(self):
-        # Utiliza o frame onde o botão 'Opções' está localizado, que já deve estar criado
+        # Utiliza o frame onde o botão 'Opções' está localizado
         menu_frame = tk.Frame(self.results_frame)
         menu_frame.pack(fill=tk.X, padx=5, pady=1)
 
@@ -1849,9 +1979,9 @@ class App:
             "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
         ], state="readonly")
         self.month_combobox.pack(side=tk.LEFT, padx=5)
-        self.month_combobox.bind("<<ComboboxSelected>>", self.filter_by_month)  # Atualizado para usar o evento
+        self.month_combobox.bind("<<ComboboxSelected>>", self.filter_by_month)
 
-        # Continuação do seu menu de opções existente
+        # Botão "Opções"
         menu_button = tk.Menubutton(menu_frame, text="Opções", relief=tk.RAISED, bg='#4a90e2', fg='white',
                                     font=('Helvetica', 8, 'bold'))
         menu_button.pack(side=tk.LEFT, padx=5)
@@ -1866,8 +1996,50 @@ class App:
         menu.add_command(label="Editar Procedimento Atribuído", command=self.edit_assigned_procedure)
         menu.add_command(label="Incluir", command=self.duplicate_schedule)
 
-        # Configurar o Menubutton para exibir o menu
-        menu_button['menu'] = menu
+        # Verificação da data do mês anterior
+        def check_date_before_last_month(selected_item):
+            """
+            Verifica se a data do item selecionado é do mês anterior.
+            """
+            if not selected_item:
+                return False
+
+            # Obtém os valores da linha selecionada
+            item_values = self.results_tree.item(selected_item, "values")
+            data_str = item_values[0]  # Supondo que a data está na primeira coluna
+
+            try:
+                # Converter a string para datetime
+                data = datetime.strptime(data_str, "%d-%m-%Y")
+                current_date = datetime.now()
+                first_day_this_month = current_date.replace(day=1)
+                first_day_last_month = (first_day_this_month - timedelta(days=1)).replace(day=1)
+                return first_day_last_month <= data < first_day_this_month
+            except ValueError:
+                return False  # Caso o formato da data esteja incorreto
+
+        # Evento para o botão "Opções"
+        def on_options_button_click(event):
+            selected_item = self.results_tree.selection()
+            if not selected_item:
+                messagebox.showwarning("Aviso", "Nenhum agendamento selecionado.")
+                return
+
+            # Se for administrador, permite sempre o acesso
+            if self.is_admin:
+                menu.tk_popup(event.x_root, event.y_root)
+                return
+
+            # Para usuários comuns, verifica a data do agendamento
+            if check_date_before_last_month(selected_item[0]):
+                messagebox.showwarning("Aviso", "Este agendamento não pode ser modificado por ser do mês anterior.")
+                return
+
+            # Exibe o menu
+            menu.tk_popup(event.x_root, event.y_root)
+
+        # Bind do evento do botão
+        menu_button.bind("<Button-1>", on_options_button_click)
 
     def filter_by_month(self, event=None):
         # Pega o mês selecionado
@@ -1943,29 +2115,25 @@ class App:
 
     def delete_agendamento(self):
         """Exclui o agendamento selecionado na Treeview da aba 'Relatório' e remove do banco de dados."""
-        # Obter a linha selecionada
         selected_item = self.results_tree.selection()
         if not selected_item:
             messagebox.showwarning("Aviso", "Selecione um agendamento para excluir!")
             return
 
-        # Capturar os valores da linha selecionada
         selected_values = self.results_tree.item(selected_item, "values")
-
         if not selected_values:
             messagebox.showwarning("Aviso", "Linha selecionada não contém dados válidos!")
             return
 
-        # Confirmar exclusão
         confirm = messagebox.askyesno("Confirmação", "Tem certeza de que deseja excluir este agendamento?")
         if not confirm:
             return
 
-        # Capturar valores específicos para identificação no banco de dados
-        data_conclusao = selected_values[0]
-        numero_agendamento = selected_values[1]
-        fiscal = selected_values[2]
-        procedimento = selected_values[6]
+        # Capturando detalhes específicos do agendamento para o log
+        data_conclusao = selected_values[0]  # Data do agendamento
+        numero_agendamento = selected_values[1]  # Número do agendamento
+        fiscal = selected_values[2]  # Nome do fiscal responsável
+        procedimento = selected_values[6]  # Nome do procedimento
 
         # Excluir do banco de dados
         table_name = f'procedimentos_{fiscal}'
@@ -1980,12 +2148,19 @@ class App:
                 (data_conclusao, numero_agendamento, procedimento)
             )
             self.conn.commit()
-            messagebox.showinfo("Sucesso", "Agendamento excluído com sucesso!")
 
-            # Remover a linha da Treeview
+            # Log the action with detailed message
+            now = datetime.datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+            self.log_action(fiscal,
+                            f"Agendamento de '{procedimento}' de {data_conclusao} com número {numero_agendamento} foi excluído em {now}.")
+
+            messagebox.showinfo("Sucesso", "Agendamento excluído com sucesso!")
             self.results_tree.delete(selected_item)
+
         except Exception as e:
             messagebox.showerror("Erro", f"Erro ao excluir agendamento: {e}")
+            self.conn.rollback()
+        finally:
             self.update_agendamentos_count()
 
     def ask_reason_for_cancellation(self):
@@ -2533,8 +2708,11 @@ class App:
             try:
                 new_quantity = int(quantity_entry.get())
                 # Atualizar no banco de dados
-                fiscal = item_values[2]  # Supondo que o nome do fiscal está na coluna 2
-                procedimento = item_values[6]  # Supondo que o procedimento está na coluna 6
+                fiscal = item_values[2]  # Nome do fiscal responsável pelo agendamento
+                procedimento = item_values[6]  # Nome do procedimento
+                current_quantity = item_values[7]  # Quantidade atual antes da mudança
+                numero_agendamento = item_values[1]  # Número do agendamento
+                data_agendamento = item_values[0]  # Data do agendamento
                 table_name = f'procedimentos_{fiscal}'
 
                 cursor = self.conn.cursor()
@@ -2543,6 +2721,13 @@ class App:
                     (new_quantity, procedimento, current_quantity)
                 )
                 self.conn.commit()
+
+                # Data e hora atuais para o log
+                now = datetime.datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+
+                # Log the action with detailed message
+                self.log_action(fiscal,
+                                f"Quantidade de '{procedimento}' no agendamento '{numero_agendamento}' de {data_agendamento} alterada de '{current_quantity}' para '{new_quantity}' em {now}.")
 
                 # Atualiza a Treeview com o novo valor
                 updated_values = list(item_values)
@@ -2608,6 +2793,8 @@ class App:
 if __name__ == "__main__":
     root = tk.Tk()
     root.geometry("800x600")
+    current_version = "1.0.0"  # Versão atual do programa
+    check_for_updates(current_version)
     app = App(root)
     app.load_default_procedures()
     root.mainloop()
