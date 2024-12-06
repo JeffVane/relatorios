@@ -1,7 +1,6 @@
 # Bibliotecas para manipulação de dados
 import pandas as pd
 
-
 # Bibliotecas para GUI com tkinter
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox, simpledialog, font
@@ -13,7 +12,6 @@ import sqlite3
 import atexit
 import os
 import sys
-import requests
 
 # Manipulação de tempo e ciclos
 from datetime import datetime, timedelta
@@ -32,46 +30,6 @@ from reportlab.lib.styles import getSampleStyleSheet  # Estilos de texto para PD
 import textwrap
 
 
-def check_for_updates(current_version):
-    try:
-        # URL do JSON com as informações de atualização no GitHub
-        update_url = "https://raw.githubusercontent.com/JeffVane/relatorios/main/update_info.json"
-        response = requests.get(update_url)
-        response.raise_for_status()
-        update_info = response.json()
-
-        latest_version = update_info["version"]
-        download_url = update_info["url"]
-
-        if latest_version > current_version:
-            print(f"Nova versão disponível: {latest_version}. Atualizando...")
-            download_and_replace(download_url)
-        else:
-            print("Você já está usando a versão mais recente.")
-    except Exception as e:
-        print(f"Erro ao verificar atualizações: {e}")
-
-
-def download_and_replace(download_url):
-    try:
-        # Baixar o novo executável
-        response = requests.get(download_url, stream=True)
-        response.raise_for_status()
-
-        with open("Fiscalização(Relatórios)_atualizado.exe", "wb") as f:
-            for chunk in response.iter_content(chunk_size=8192):
-                f.write(chunk)
-
-        print("Atualização baixada com sucesso!")
-
-        # Substituir o executável antigo pelo novo
-        os.replace("Fiscalização(Relatórios)_atualizado.exe", sys.executable)
-        print("Atualização concluída! Reiniciando o programa...")
-
-        # Reiniciar o programa
-        os.execl(sys.executable, sys.executable, *sys.argv)
-    except Exception as e:
-        print(f"Erro ao baixar ou instalar a atualização: {e}")
 class App:
     def __init__(self, root):
         self.root = root
@@ -2793,8 +2751,6 @@ class App:
 if __name__ == "__main__":
     root = tk.Tk()
     root.geometry("800x600")
-    current_version = "1.0.0"  # Versão atual do programa
-    check_for_updates(current_version)
     app = App(root)
     app.load_default_procedures()
     root.mainloop()
