@@ -147,6 +147,12 @@ class App:
         self.search_entry = tk.Entry(self.results_frame, textvariable=self.search_var)
         self.search_entry.pack(side=tk.TOP, fill=tk.X, padx=10, pady=5)
         self.search_entry.bind("<KeyRelease>", self.update_report_search)
+
+        # Label para exibir o total de agendamentos
+        self.total_agendamentos_label = tk.Label(self.results_frame, text="Total de Agendamentos: 0",
+                                                 font=("Helvetica", 12))
+        self.total_agendamentos_label.pack(side=tk.BOTTOM,pady=5, anchor="s")
+
         # Mensal
 
         # Configurar a Treeview para exibir os resultados mensais
@@ -1558,6 +1564,9 @@ class App:
 
                 # Armazena o item original para busca
                 self.original_tree_items.append(formatted_row + [resultado])
+                # Atualizar a label com o total de agendamentos
+                total_agendamentos = len(self.results_tree.get_children())
+                self.total_agendamentos_label.config(text=f"Total de Agendamentos: {total_agendamentos}")
 
 
 
