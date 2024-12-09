@@ -2,7 +2,7 @@ import sqlite3
 
 
 def create_user_eliete():
-    conn = sqlite3.connect(r"\\srvsql\Banco Cursos\fiscais.db")
+    conn = sqlite3.connect(r"\\srvsql\banco fisc\fiscais.db")
     cursor = conn.cursor()
 
     # Verificar se o usuário "ELIETE" já existe

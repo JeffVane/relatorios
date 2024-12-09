@@ -1,6 +1,7 @@
 # Bibliotecas para manipulação de dados
 import pandas as pd
 
+
 # Bibliotecas para GUI com tkinter
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox, simpledialog, font
@@ -12,6 +13,7 @@ import sqlite3
 import atexit
 import os
 import sys
+import requests
 
 # Manipulação de tempo e ciclos
 from datetime import datetime, timedelta
@@ -29,6 +31,39 @@ from reportlab.lib.styles import getSampleStyleSheet  # Estilos de texto para PD
 # Biblioteca para manipulação de texto
 import textwrap
 
+
+def check_for_updates(current_version):
+    try:
+        # URL do JSON com as informações de atualização no GitHub
+        update_url = "https://raw.githubusercontent.com/JeffVane/relatorios/main/version.json"
+        response = requests.get(update_url)
+        response.raise_for_status()
+        update_info = response.json()
+        latest_version = update_info["version"]
+        download_url = update_info["url"]
+        if latest_version > current_version:
+            print(f"Nova versão disponível: {latest_version}. Atualizando...")
+            download_and_replace(download_url)
+        else:
+            print("Você já está usando a versão mais recente.")
+    except Exception as e:
+        print(f"Erro ao verificar atualizações: {e}")
+def download_and_replace(download_url):
+    try:
+        # Baixar o novo executável
+        response = requests.get(download_url, stream=True)
+        response.raise_for_status()
+        with open("Fiscalização(Relatórios)_atualizado.exe", "wb") as f:
+            for chunk in response.iter_content(chunk_size=8192):
+                f.write(chunk)
+        print("Atualização baixada com sucesso!")
+        # Substituir o executável antigo pelo novo
+        os.replace("Fiscalização(Relatórios)_atualizado.exe", sys.executable)
+        print("Atualização concluída! Reiniciando o programa...")
+        # Reiniciar o programa
+        os.execl(sys.executable, sys.executable, *sys.argv)
+    except Exception as e:
+        print(f"Erro ao baixar ou instalar a atualização: {e}")
 
 class App:
     def __init__(self, root):
@@ -1179,21 +1214,26 @@ class App:
             self.setup_log_tab()
 
     def setup_log_tab(self):
-        self.log_tree = ttk.Treeview(self.log_frame, columns=("user", "action"), show="headings")
-        self.log_tree.heading("user", text="Usuário")
-        self.log_tree.heading("action", text="Ação")
-        self.log_tree.column("user", width=5)
-        self.log_tree.column("action", width=300)
-        self.log_tree.pack(fill=tk.BOTH, expand=True)
-        self.log_search_var = tk.StringVar()
-        tk.Label(self.log_frame, text="Buscar:").pack(side=tk.TOP, padx=10, pady=5, anchor="w")
-        self.log_search_entry = tk.Entry(self.log_frame, textvariable=self.log_search_var)
-        self.log_search_entry.pack(side=tk.TOP, fill=tk.X, padx=10, pady=5)
-        self.log_search_entry.bind("<KeyRelease>", self.update_log_search)
-
-        # Botão para atualizar os logs
-        refresh_button = tk.Button(self.log_frame, text="Atualizar Logs", command=self.load_logs)
-        refresh_button.pack(pady=10)
+     self.log_tree = ttk.Treeview(self.log_frame, columns=("user", "action"), show="headings")
+     self.log_tree.heading("user", text="Usuário")
+     self.log_tree.heading("action", text="Ação")
+     self.log_tree.column("user", width=5)
+     self.log_tree.column("action", width=300)
+     self.log_tree.pack(fill=tk.BOTH, expand=True)
+ 
+     self.log_search_var = tk.StringVar()
+     tk.Label(self.log_frame, text="Buscar:").pack(side=tk.TOP, padx=10, pady=5, anchor="w")
+     self.log_search_entry = tk.Entry(self.log_frame, textvariable=self.log_search_var)
+     self.log_search_entry.pack(side=tk.TOP, fill=tk.X, padx=10, pady=5)
+     self.log_search_entry.bind("<KeyRelease>", self.update_log_search)
+ 
+     # Botão para atualizar os logs
+     refresh_button = tk.Button(self.log_frame, text="Atualizar Logs", command=self.load_logs)
+     refresh_button.pack(pady=5)
+ 
+     # Botão para apagar os logs
+     clear_logs_button = tk.Button(self.log_frame, text="Apagar Histórico", command=self.clear_logs, bg="red", fg="white")
+     clear_logs_button.pack(pady=5)
 
     def load_logs(self):
         if not self.is_admin:
@@ -1241,6 +1281,26 @@ class App:
             for log in self.original_log_items:
                 if any(search_term in str(value).lower() for value in log):
                     self.log_tree.insert("", "end", values=log)
+
+    def clear_logs(self):
+        if not self.is_admin:
+            messagebox.showerror("Erro", "Acesso negado. Apenas administradores podem apagar o histórico.")
+            return
+    
+        confirm = messagebox.askyesno("Confirmação", "Tem certeza de que deseja apagar todo o histórico de logs?")
+        if not confirm:
+            return
+    
+        try:
+            cursor = self.conn.cursor()
+            cursor.execute("DELETE FROM logs")
+            self.conn.commit()
+            self.log_tree.delete(*self.log_tree.get_children())
+            self.original_log_items = []
+            messagebox.showinfo("Sucesso", "Histórico de logs apagado com sucesso!")
+        except Exception as e:
+            messagebox.showerror("Erro", f"Não foi possível apagar o histórico: {e}")
+
 
     def load_existing_data_from_db(self, fiscal_name):
         """Carrega os dados do banco de dados para inicializar a aplicação, se disponíveis."""
@@ -2751,6 +2811,7 @@ class App:
 if __name__ == "__main__":
     root = tk.Tk()
     root.geometry("800x600")
+    current_version = "1.0.0"  # Versão atual do programa
     app = App(root)
     app.load_default_procedures()
     root.mainloop()
